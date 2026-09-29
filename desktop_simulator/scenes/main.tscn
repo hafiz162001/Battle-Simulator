@@ -1,0 +1,796 @@
+[gd_scene load_steps=15 format=3 uid="uid://main_battle_scene"]
+
+[ext_resource type="Script" path="res://scripts/desert_arena.gd" id="1_arena"]
+[ext_resource type="Script" path="res://scripts/battle_manager.gd" id="2_manager"]
+[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/ui_overlay.gd" id="4_ui"]
+[ext_resource type="Script" path="res://scripts/audio_manager.gd" id="5_audio"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glass_panel"]
+bg_color = Color(0.04, 0.06, 0.1, 0.76)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.38, 0.52, 0.4)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glass_pill"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.05, 0.07, 0.12, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.42, 0.58, 0.45)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glass_sidebar"]
+bg_color = Color(0.04, 0.05, 0.08, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.38, 0.52, 0.5)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.1, 0.14, 0.22, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.4, 0.55, 0.45)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.18, 0.24, 0.36, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.65, 0.12, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.96, 0.65, 0.12, 0.25)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.06, 0.08, 0.14, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.65, 0.12, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_primary"]
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+bg_color = Color(0.92, 0.58, 0.05, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.92, 0.58, 0.05, 0.45)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_primary_hover"]
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 0.68, 0.12, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(1, 0.68, 0.12, 0.65)
+shadow_size = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_primary_pressed"]
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+bg_color = Color(0.78, 0.48, 0.04, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal"]
+bg_color = Color(0.06, 0.07, 0.1, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.62, 0.04, 0.85)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 24
+
+[node name="Main" type="Node3D"]
+
+[node name="DesertArena" type="Node3D" parent="."]
+script = ExtResource("1_arena")
+
+[node name="BattleManager" type="Node3D" parent="."]
+script = ExtResource("2_manager")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 15, 30)
+script = ExtResource("3_camera")
+
+[node name="AudioManager" type="Node" parent="."]
+script = ExtResource("5_audio")
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4_ui")
+
+[node name="TopHeader" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 80.0
+grow_horizontal = 2
+
+[node name="LogoPanel" type="PanelContainer" parent="UI/TopHeader"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 260.0
+offset_bottom = 60.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glass_pill")
+
+[node name="HBox" type="HBoxContainer" parent="UI/TopHeader/LogoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Badge" type="Label" parent="UI/TopHeader/LogoPanel/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "⚔️"
+
+[node name="Titles" type="VBoxContainer" parent="UI/TopHeader/LogoPanel/HBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/TopHeader/LogoPanel/HBox/Titles"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "CITY WARZ 3D (URBAN)"
+
+[node name="Sub" type="Label" parent="UI/TopHeader/LogoPanel/HBox/Titles"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.74, 0.98, 1)
+theme_override_font_sizes/font_size = 9
+text = "Metropolis Arena • RTX 4050"
+
+[node name="ScoreBox" type="PanelContainer" parent="UI/TopHeader"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -270.0
+offset_top = 14.0
+offset_right = 270.0
+offset_bottom = 66.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_glass_pill")
+
+[node name="Margin" type="MarginContainer" parent="UI/TopHeader/ScoreBox"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 2
+
+[node name="HBox" type="HBoxContainer" parent="UI/TopHeader/ScoreBox/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="TeamA" type="VBoxContainer" parent="UI/TopHeader/ScoreBox/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="NameA" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamA"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
+theme_override_font_sizes/font_size = 11
+text = "🪖 Kubu A"
+horizontal_alignment = 1
+
+[node name="CountA" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamA"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "60 / 60"
+horizontal_alignment = 1
+
+[node name="VSBox" type="VBoxContainer" parent="UI/TopHeader/ScoreBox/Margin/HBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="VSText" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/VSBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 10
+text = "⚡ VS ⚡"
+horizontal_alignment = 1
+
+[node name="Timer" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/VSBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "00:00"
+horizontal_alignment = 1
+
+[node name="TeamB" type="VBoxContainer" parent="UI/TopHeader/ScoreBox/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="NameB" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamB"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23, 0.58, 0.96, 1)
+theme_override_font_sizes/font_size = 11
+text = "🤖 Kubu B"
+horizontal_alignment = 1
+
+[node name="CountB" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamB"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "60 / 60"
+horizontal_alignment = 1
+
+[node name="TopRight" type="HBoxContainer" parent="UI/TopHeader"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -270.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = 58.0
+grow_horizontal = 0
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="ToggleSidebarBtn" type="Button" parent="UI/TopHeader/TopRight"]
+custom_minimum_size = Vector2(136, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⚙️ Formasi Pasukan"
+
+[node name="SoundBtn" type="Button" parent="UI/TopHeader/TopRight"]
+custom_minimum_size = Vector2(86, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🔊 Suara"
+
+[node name="Sidebar" type="PanelContainer" parent="UI"]
+visible = false
+offset_left = 20.0
+offset_top = 76.0
+offset_right = 350.0
+offset_bottom = 750.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glass_sidebar")
+
+[node name="Margin" type="MarginContainer" parent="UI/Sidebar"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="UI/Sidebar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
+theme_override_font_sizes/font_size = 13
+text = "🚩 PENGATURAN FORMASI"
+horizontal_alignment = 1
+
+[node name="SecA" type="VBoxContainer" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LabelA" type="Label" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
+theme_override_font_sizes/font_size = 11
+text = "🪖 Kubu A (Tim Emas)"
+
+[node name="OptionA" type="OptionButton" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
+[node name="ModelLabelA" type="Label" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Model 3D A:"
+
+[node name="ModelOptionA" type="OptionButton" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
+[node name="LoadCustomA" type="Button" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "📁 Import Model 3D A (.glb)"
+
+[node name="CountWrapA" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+
+[node name="Lbl" type="Label" parent="UI/Sidebar/Margin/VBox/SecA/CountWrapA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "Jumlah Pasukan:"
+
+[node name="ValA" type="Label" parent="UI/Sidebar/Margin/VBox/SecA/CountWrapA"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
+theme_override_font_sizes/font_size = 12
+text = "60"
+
+[node name="SliderA" type="HSlider" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+min_value = 10.0
+max_value = 300.0
+step = 5.0
+value = 60.0
+
+[node name="QuickA" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecA"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Q30" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "30"
+
+[node name="Q60" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "60"
+
+[node name="Q120" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "120"
+
+[node name="Q250" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "250"
+
+[node name="SecB" type="VBoxContainer" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LabelB" type="Label" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23, 0.58, 0.96, 1)
+theme_override_font_sizes/font_size = 11
+text = "🤖 Kubu B (Tim Biru)"
+
+[node name="OptionB" type="OptionButton" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
+[node name="ModelLabelB" type="Label" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+text = "Model 3D B:"
+
+[node name="ModelOptionB" type="OptionButton" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+
+[node name="LoadCustomB" type="Button" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "📁 Import Model 3D B (.glb)"
+
+[node name="CountWrapB" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+
+[node name="Lbl" type="Label" parent="UI/Sidebar/Margin/VBox/SecB/CountWrapB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "Jumlah Pasukan:"
+
+[node name="ValB" type="Label" parent="UI/Sidebar/Margin/VBox/SecB/CountWrapB"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23, 0.58, 0.96, 1)
+theme_override_font_sizes/font_size = 12
+text = "60"
+
+[node name="SliderB" type="HSlider" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+min_value = 10.0
+max_value = 300.0
+step = 5.0
+value = 60.0
+
+[node name="QuickB" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecB"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Q30" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "30"
+
+[node name="Q60" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "60"
+
+[node name="Q120" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "120"
+
+[node name="Q250" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "250"
+
+[node name="PresetsTitle" type="Label" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = "🔥 PRESET TEMPUR:"
+
+[node name="Preset1" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🏹 60 Pemanah vs ⚔️ 60 Pendekar"
+
+[node name="Preset2" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🏹 100 Pemanah vs 🤖 100 Cyborg"
+
+[node name="Preset3" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🧌 1 Colossal Titan vs 🏹 150 Pemanah"
+
+[node name="Preset4" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🥊 100 Tyson vs ⚔️ 100 Pendekar"
+
+[node name="ApplyArmyBtn" type="Button" parent="UI/Sidebar/Margin/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_primary")
+theme_override_styles/hover = SubResource("StyleBoxFlat_primary_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_pressed")
+text = "🚀 TERAPKAN FORMASI"
+
+[node name="BottomBar" type="PanelContainer" parent="UI"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -440.0
+offset_top = -68.0
+offset_right = 440.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glass_pill")
+
+[node name="HBox" type="HBoxContainer" parent="UI/BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="CamGroup" type="HBoxContainer" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ReelsBtn" type="Button" parent="UI/BottomBar/HBox/CamGroup"]
+custom_minimum_size = Vector2(74, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "📱 Reels"
+
+[node name="DroneBtn" type="Button" parent="UI/BottomBar/HBox/CamGroup"]
+custom_minimum_size = Vector2(76, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🚁 Drone"
+
+[node name="ActionBtn" type="Button" parent="UI/BottomBar/HBox/CamGroup"]
+custom_minimum_size = Vector2(78, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⚔️ Action"
+
+[node name="TopDownBtn" type="Button" parent="UI/BottomBar/HBox/CamGroup"]
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🦅 Top"
+
+[node name="Sep1" type="VSeparator" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+
+[node name="ActionGroup" type="HBoxContainer" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StartBtn" type="Button" parent="UI/BottomBar/HBox/ActionGroup"]
+custom_minimum_size = Vector2(170, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_primary")
+theme_override_styles/hover = SubResource("StyleBoxFlat_primary_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_pressed")
+text = "⚔️ MULAI PERANG!"
+
+[node name="PauseBtn" type="Button" parent="UI/BottomBar/HBox/ActionGroup"]
+custom_minimum_size = Vector2(44, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⏸️"
+
+[node name="ResetBtn" type="Button" parent="UI/BottomBar/HBox/ActionGroup"]
+custom_minimum_size = Vector2(80, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🔄 Reset"
+
+[node name="Sep2" type="VSeparator" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+
+[node name="SpeedGroup" type="HBoxContainer" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SlowBtn" type="Button" parent="UI/BottomBar/HBox/SpeedGroup"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "0.2x"
+
+[node name="NormalBtn" type="Button" parent="UI/BottomBar/HBox/SpeedGroup"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "1.0x"
+
+[node name="FastBtn" type="Button" parent="UI/BottomBar/HBox/SpeedGroup"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "2.5x"
+
+[node name="VictoryModal" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="UI/VictoryModal"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.65)
+
+[node name="Card" type="PanelContainer" parent="UI/VictoryModal"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -140.0
+offset_right = 220.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
+
+[node name="Margin" type="MarginContainer" parent="UI/VictoryModal/Card"]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UI/VictoryModal/Card/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
+theme_override_font_sizes/font_size = 24
+text = "🏆 KEMENANGAN TEMPUR!"
+horizontal_alignment = 1
+
+[node name="WinnerLbl" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "KUBU A MENANG!"
+horizontal_alignment = 1
+
+[node name="StatsLbl" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "Sisa Pasukan: 42 | Durasi: 00:35"
+horizontal_alignment = 1
+
+[node name="RematchBtn" type="Button" parent="UI/VictoryModal/Card/Margin/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_primary")
+theme_override_styles/hover = SubResource("StyleBoxFlat_primary_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_pressed")
+text = "🔄 Tanding Ulang (Rematch)"
+
+[node name="CustomModelDialog" type="FileDialog" parent="UI"]
+title = "Pilih File 3D Sendiri (.glb / .gltf)"
+initial_position = 2
+size = Vector2i(700, 480)
+ok_button_text = "Buka Model 3D"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.glb ; GLB 3D Files", "*.gltf ; GLTF 3D Files")

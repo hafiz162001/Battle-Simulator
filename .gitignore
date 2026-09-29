@@ -1,0 +1,15 @@
+# Godot 4+ specific ignores
+.godot/
+*.translation
+
+# Engine binaries & archives (>100MB limit on GitHub)
+tools/
+*.zip
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/
+.idea/

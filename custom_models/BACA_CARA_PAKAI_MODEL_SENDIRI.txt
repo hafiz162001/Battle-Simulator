@@ -1,0 +1,20 @@
+CARA PAKAI 3D MODEL SENDIRI:
+==================================
+Ada 2 Cara Mudah:
+
+CARA 1 (Paling Cepat - Lewat Tombol di Dalam Game):
+1. Buka game lewat 'run_desktop_game.bat'
+2. Buka menu '🚩 Formasi & Mod' di kanan atas.
+3. Klik tombol:
+   '📁 Import File 3D Sendiri A (.glb)'  ATAU
+   '📁 Import File 3D Sendiri B (.glb)'
+4. Pilih file model 3D Anda (.glb atau .gltf) di folder mana saja di komputer Anda (Downloads, Desktop, dll).
+5. Model akan langsung dipakai oleh pasukan di medan perang!
+
+CARA 2 (Taruh File di Folder Ini):
+1. Cukup copy-paste file model 3D Anda (.glb atau .gltf) ke dalam folder ini ('custom_models').
+2. Saat game dibuka, model akan otomatis muncul di dropdown pilihan model!
+
+Tips Format Model:
+- Format terbaik: .glb atau .gltf
+- Model yang memiliki animasi (Walk, Run, Punch, Attack, Idle) akan otomatis menggerakkan animasinya!
