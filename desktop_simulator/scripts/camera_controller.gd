@@ -8,8 +8,8 @@ var lead_unit: Node3D = null
 
 # Orbit parameters for Drone mode
 var yaw := 0.0
-var pitch := -18.0
-var distance := 38.0
+var pitch := -25.0
+var distance := 50.0
 
 var move_speed := 35.0
 var mouse_sensitivity := 0.22
@@ -48,11 +48,11 @@ func set_mode(mode: CamMode) -> void:
 				cam_attr.dof_blur_far_distance = 32.0
 				cam_attr.dof_blur_far_transition = 25.0
 		CamMode.DRONE:
-			pitch = -22.0
-			distance = 42.0
+			pitch = -25.0
+			distance = 50.0
 			if cam_attr:
 				cam_attr.dof_blur_far_enabled = true
-				cam_attr.dof_blur_far_distance = 75.0
+				cam_attr.dof_blur_far_distance = 85.0
 				cam_attr.dof_blur_far_transition = 50.0
 		CamMode.ACTION:
 			pitch = -8.0
@@ -130,6 +130,8 @@ func set_target_center(center: Vector3, p_lead_unit: Node3D = null) -> void:
 		update_camera_transform()
 
 func update_camera_transform() -> void:
+	if not is_inside_tree():
+		return
 	var rot_yaw := deg_to_rad(yaw)
 	var rot_pitch := deg_to_rad(pitch)
 	

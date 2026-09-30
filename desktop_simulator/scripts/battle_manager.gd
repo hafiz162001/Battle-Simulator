@@ -54,7 +54,7 @@ func scan_custom_models() -> void:
 		var file_name = dir.get_next()
 		while file_name != "":
 			if not dir.current_is_dir() and (file_name.ends_with(".glb") or file_name.ends_with(".gltf")):
-				var full_path = "custom_models/" + file_name
+				var full_path = ProjectSettings.globalize_path(dir_path) + "/" + file_name
 				load_custom_model_from_file(full_path, file_name)
 			file_name = dir.get_next()
 
@@ -105,18 +105,29 @@ func setup_battle() -> void:
 	
 	update_hud()
 
-func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, config: Dictionary, start_x: float, forward_dir: float) -> void:
-	var u_scale = config.get("scale", 1.0)
-	var cols = max(4, int(ceil(sqrt(count * 2.2))))
-	var spacing_x = 1.4 * max(1.0, u_scale * 0.7)
-	var spacing_z = 1.3 * max(1.0, u_scale * 0.7)
+func update_hud() -> void:
+	if ui and ui.has_method("update_stats"):
+		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, 0.0, 0.0)
+
+func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, config: Dictionary, _start_x: float, forward_dir: float) -> void:
+	var max_cols: int = 30 if count > 200 else (20 if count > 80 else 10)
+	var cols: int = clamp(int(ceil(sqrt(float(count) * 1.6))), 4, max_cols)
+	var rows: int = int(ceil(float(count) / float(cols)))
+	
+	var usable_width_z: float = 36.0
+	var spacing_z: float = clamp(usable_width_z / float(cols), 0.75, 1.4)
+	
+	var usable_depth_x: float = 28.0
+	var spacing_x: float = clamp(usable_depth_x / float(max(rows, 1)), 0.65, 1.3)
+	
+	var actual_start_x: float = -6.5 if forward_dir > 0 else 6.5
 	
 	for i in range(count):
 		var row = int(i / cols)
 		var col = i % cols
 		
-		var px = start_x + ( -row * spacing_x if forward_dir > 0 else row * spacing_x ) + (randf() - 0.5) * 0.3
-		var pz = (col - cols / 2.0) * spacing_z + (randf() - 0.5) * 0.3
+		var px = actual_start_x + (-row * spacing_x if forward_dir > 0 else row * spacing_x) + (randf() - 0.5) * 0.15
+		var pz = (col - (float(cols) - 1.0) * 0.5) * spacing_z + (randf() - 0.5) * 0.15
 		var py = arena.get_ground_height(px, pz) if arena else 0.0
 		
 		var unit := BattleUnit.new()
@@ -245,7 +256,15 @@ func find_nearest_in_list(unit: BattleUnit, enemy_list: Array) -> BattleUnit:
 	var min_dist_sq := INF
 	var u_pos = unit.global_position
 	
-	for other in enemy_list:
+	var list_size = enemy_list.size()
+	var step = 1
+	if list_size > 300:
+		step = 5
+	elif list_size > 120:
+		step = 2
+		
+	for i in range(0, list_size, step):
+		var other = enemy_list[i]
 		if is_instance_valid(other) and not other.is_dead:
 			var d_sq = u_pos.distance_squared_to(other.global_position)
 			if d_sq < min_dist_sq:

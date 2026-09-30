@@ -94,7 +94,7 @@ func setup_lighting_and_environment() -> void:
 	
 	# Screen Space Reflections (SSR) for Wet Asphalt & Glass Towers
 	env.ssr_enabled = true
-	env.ssr_max_steps = 128
+	env.ssr_max_steps = 36
 	env.ssr_fade_in = 0.12
 	env.ssr_fade_out = 2.2
 	env.ssr_depth_tolerance = 0.2
@@ -131,7 +131,7 @@ func setup_lighting_and_environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_blend_splits = true
-	sun.directional_shadow_max_distance = 180.0
+	sun.directional_shadow_max_distance = 110.0
 	sun.shadow_bias = 0.002
 	sun.shadow_normal_bias = 1.1
 	sun.shadow_blur = 1.2
@@ -472,21 +472,23 @@ func setup_skyscrapers_and_buildings() -> void:
 	var materials = [glass_cyan, glass_dark, concrete_facade, white_facade]
 	
 	# A. Inner Ring of High-Rise Buildings Framing North & South Perimeters
-	# North building row (Z between -32 and -75)
+	# North building row (Z between -44 and -85, backdrop city skyline)
 	for i in range(-5, 6):
 		var bx: float = float(i) * 16.0
-		var bz: float = -38.0 - abs(float(i)) * 3.5
+		var bz: float = -44.0 - abs(float(i)) * 3.5
 		var bw: float = randf_range(12.0, 15.0)
 		var bd: float = randf_range(14.0, 18.0)
 		var bh: float = randf_range(28.0, 68.0)
 		var mat_idx: int = abs(i) % materials.size()
 		build_skyscraper(city_root, Vector3(bx, 0, bz), Vector3(bw, bh, bd), materials[mat_idx])
 		
-	# South building row (Z between +32 and +75)
+	# South building row (Z between +54 and +95, framing the arena without blocking spectator camera)
 	for i in range(-5, 6):
-		var bx: float = float(i) * 16.0
-		var bz: float = 38.0 + abs(float(i)) * 3.5
-		var bw: float = randf_range(12.0, 15.0)
+		if abs(i) <= 1:
+			continue # Center spectator opening so the camera has a pristine view of both armies!
+		var bx: float = float(i) * 18.0
+		var bz: float = 54.0 + abs(float(i)) * 4.0
+		var bw: float = randf_range(13.0, 16.0)
 		var bd: float = randf_range(14.0, 18.0)
 		var bh: float = randf_range(28.0, 68.0)
 		var mat_idx: int = (abs(i) + 1) % materials.size()

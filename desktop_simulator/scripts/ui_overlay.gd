@@ -30,27 +30,31 @@ var cutscene_team: int = 0
 @onready var option_a: OptionButton = $Sidebar/Margin/VBox/SecA/OptionA
 @onready var model_option_a: OptionButton = $Sidebar/Margin/VBox/SecA/ModelOptionA
 @onready var load_custom_a_btn: Button = $Sidebar/Margin/VBox/SecA/LoadCustomA
-@onready var val_a_label: Label = $Sidebar/Margin/VBox/SecA/CountWrapA/ValA
+@onready var val_a_input: LineEdit = $Sidebar/Margin/VBox/SecA/CountWrapA/ValA
 @onready var slider_a: HSlider = $Sidebar/Margin/VBox/SecA/SliderA
-@onready var q30_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q30
 @onready var q60_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q60
-@onready var q120_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q120
-@onready var q250_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q250
+@onready var q150_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q150
+@onready var q300_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q300
+@onready var q500_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q500
+@onready var q1000_a: Button = $Sidebar/Margin/VBox/SecA/QuickA/Q1000
 
 @onready var option_b: OptionButton = $Sidebar/Margin/VBox/SecB/OptionB
 @onready var model_option_b: OptionButton = $Sidebar/Margin/VBox/SecB/ModelOptionB
 @onready var load_custom_b_btn: Button = $Sidebar/Margin/VBox/SecB/LoadCustomB
-@onready var val_b_label: Label = $Sidebar/Margin/VBox/SecB/CountWrapB/ValB
+@onready var val_b_input: LineEdit = $Sidebar/Margin/VBox/SecB/CountWrapB/ValB
 @onready var slider_b: HSlider = $Sidebar/Margin/VBox/SecB/SliderB
-@onready var q30_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q30
 @onready var q60_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q60
-@onready var q120_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q120
-@onready var q250_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q250
+@onready var q150_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q150
+@onready var q300_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q300
+@onready var q500_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q500
+@onready var q1000_b: Button = $Sidebar/Margin/VBox/SecB/QuickB/Q1000
 
 @onready var preset_btn1: Button = $Sidebar/Margin/VBox/Preset1
 @onready var preset_btn2: Button = $Sidebar/Margin/VBox/Preset2
 @onready var preset_btn3: Button = $Sidebar/Margin/VBox/Preset3
 @onready var preset_btn4: Button = $Sidebar/Margin/VBox/Preset4
+@onready var preset_btn5: Button = $Sidebar/Margin/VBox/Preset5
+@onready var preset_btn6: Button = $Sidebar/Margin/VBox/Preset6
 @onready var apply_army_btn: Button = $Sidebar/Margin/VBox/ApplyArmyBtn
 
 # File Picker Dialog
@@ -132,18 +136,38 @@ func connect_signals() -> void:
 	sound_btn.pressed.connect(_on_sound_pressed)
 	toggle_sidebar_btn.pressed.connect(_on_toggle_sidebar_pressed)
 	
-	slider_a.value_changed.connect(func(val): val_a_label.text = str(int(val)))
-	slider_b.value_changed.connect(func(val): val_b_label.text = str(int(val)))
+	slider_a.value_changed.connect(func(val): val_a_input.text = str(int(val)))
+	slider_b.value_changed.connect(func(val): val_b_input.text = str(int(val)))
 	
-	q30_a.pressed.connect(func(): set_slider_a(30))
+	val_a_input.text_submitted.connect(func(new_text):
+		var v = clamp(int(new_text), 10, 1000)
+		set_slider_a(v)
+	)
+	val_a_input.focus_exited.connect(func():
+		var v = clamp(int(val_a_input.text), 10, 1000)
+		set_slider_a(v)
+	)
+	
+	val_b_input.text_submitted.connect(func(new_text):
+		var v = clamp(int(new_text), 10, 1000)
+		set_slider_b(v)
+	)
+	val_b_input.focus_exited.connect(func():
+		var v = clamp(int(val_b_input.text), 10, 1000)
+		set_slider_b(v)
+	)
+	
 	q60_a.pressed.connect(func(): set_slider_a(60))
-	q120_a.pressed.connect(func(): set_slider_a(120))
-	q250_a.pressed.connect(func(): set_slider_a(250))
+	q150_a.pressed.connect(func(): set_slider_a(150))
+	q300_a.pressed.connect(func(): set_slider_a(300))
+	q500_a.pressed.connect(func(): set_slider_a(500))
+	q1000_a.pressed.connect(func(): set_slider_a(1000))
 	
-	q30_b.pressed.connect(func(): set_slider_b(30))
 	q60_b.pressed.connect(func(): set_slider_b(60))
-	q120_b.pressed.connect(func(): set_slider_b(120))
-	q250_b.pressed.connect(func(): set_slider_b(250))
+	q150_b.pressed.connect(func(): set_slider_b(150))
+	q300_b.pressed.connect(func(): set_slider_b(300))
+	q500_b.pressed.connect(func(): set_slider_b(500))
+	q1000_b.pressed.connect(func(): set_slider_b(1000))
 	
 	option_a.item_selected.connect(_on_preset_a_selected)
 	option_b.item_selected.connect(_on_preset_b_selected)
@@ -156,9 +180,11 @@ func connect_signals() -> void:
 	
 	# Presets
 	preset_btn1.pressed.connect(func(): apply_preset_matchup("archer", "soldier", 60, "swordsman", "soldier", 60))
-	preset_btn2.pressed.connect(func(): apply_preset_matchup("archer", "soldier", 100, "cyborg", "xbot", 100))
-	preset_btn3.pressed.connect(func(): apply_preset_matchup("titan", "soldier", 1, "archer", "soldier", 150))
-	preset_btn4.pressed.connect(func(): apply_preset_matchup("tyson", "robot_expressive", 100, "swordsman", "soldier", 100))
+	preset_btn2.pressed.connect(func(): apply_preset_matchup("archer", "soldier", 150, "cyborg", "xbot", 150))
+	preset_btn3.pressed.connect(func(): apply_preset_matchup("titan", "soldier", 1, "archer", "soldier", 300))
+	preset_btn4.pressed.connect(func(): apply_preset_matchup("tyson", "robot_expressive", 200, "swordsman", "soldier", 200))
+	preset_btn5.pressed.connect(func(): apply_preset_matchup("archer", "soldier", 500, "swordsman", "soldier", 500))
+	preset_btn6.pressed.connect(func(): apply_preset_matchup("commando", "soldier", 1000, "cyborg", "xbot", 1000))
 	
 	reels_btn.pressed.connect(func(): set_camera(0))
 	drone_btn.pressed.connect(func(): set_camera(1))
@@ -461,11 +487,11 @@ func _on_preset_b_selected(idx: int) -> void:
 
 func set_slider_a(val: int) -> void:
 	slider_a.value = val
-	val_a_label.text = str(val)
+	val_a_input.text = str(val)
 
 func set_slider_b(val: int) -> void:
 	slider_b.value = val
-	val_b_label.text = str(val)
+	val_b_input.text = str(val)
 
 func _on_sound_pressed() -> void:
 	if audio_mgr:

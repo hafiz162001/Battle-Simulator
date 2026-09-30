@@ -388,31 +388,25 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 11
 text = "Jumlah Pasukan:"
 
-[node name="ValA" type="Label" parent="UI/Sidebar/Margin/VBox/SecA/CountWrapA"]
+[node name="ValA" type="LineEdit" parent="UI/Sidebar/Margin/VBox/SecA/CountWrapA"]
+custom_minimum_size = Vector2(65, 24)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "60"
+alignment = 1
+max_length = 4
 
 [node name="SliderA" type="HSlider" parent="UI/Sidebar/Margin/VBox/SecA"]
 layout_mode = 2
 min_value = 10.0
-max_value = 300.0
-step = 5.0
+max_value = 1000.0
+step = 10.0
 value = 60.0
 
 [node name="QuickA" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecA"]
 layout_mode = 2
 theme_override_constants/separation = 4
-
-[node name="Q30" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "30"
 
 [node name="Q60" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
 layout_mode = 2
@@ -423,23 +417,41 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 text = "60"
 
-[node name="Q120" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+[node name="Q150" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "120"
+text = "150"
 
-[node name="Q250" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+[node name="Q300" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "250"
+text = "300"
+
+[node name="Q500" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "500"
+
+[node name="Q1000" type="Button" parent="UI/Sidebar/Margin/VBox/SecA/QuickA"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "1000"
 
 [node name="SecB" type="VBoxContainer" parent="UI/Sidebar/Margin/VBox"]
 layout_mode = 2
@@ -482,31 +494,25 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 11
 text = "Jumlah Pasukan:"
 
-[node name="ValB" type="Label" parent="UI/Sidebar/Margin/VBox/SecB/CountWrapB"]
+[node name="ValB" type="LineEdit" parent="UI/Sidebar/Margin/VBox/SecB/CountWrapB"]
+custom_minimum_size = Vector2(65, 24)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.23, 0.58, 0.96, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "60"
+alignment = 1
+max_length = 4
 
 [node name="SliderB" type="HSlider" parent="UI/Sidebar/Margin/VBox/SecB"]
 layout_mode = 2
 min_value = 10.0
-max_value = 300.0
-step = 5.0
+max_value = 1000.0
+step = 10.0
 value = 60.0
 
 [node name="QuickB" type="HBoxContainer" parent="UI/Sidebar/Margin/VBox/SecB"]
 layout_mode = 2
 theme_override_constants/separation = 4
-
-[node name="Q30" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "30"
 
 [node name="Q60" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
 layout_mode = 2
@@ -517,23 +523,41 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 text = "60"
 
-[node name="Q120" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+[node name="Q150" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "120"
+text = "150"
 
-[node name="Q250" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+[node name="Q300" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "250"
+text = "300"
+
+[node name="Q500" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "500"
+
+[node name="Q1000" type="Button" parent="UI/Sidebar/Margin/VBox/SecB/QuickB"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "1000"
 
 [node name="PresetsTitle" type="Label" parent="UI/Sidebar/Margin/VBox"]
 layout_mode = 2
@@ -555,7 +579,7 @@ theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "🏹 100 Pemanah vs 🤖 100 Cyborg"
+text = "🏹 150 Pemanah vs 🤖 150 Cyborg"
 
 [node name="Preset3" type="Button" parent="UI/Sidebar/Margin/VBox"]
 layout_mode = 2
@@ -563,7 +587,7 @@ theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "🧌 1 Colossal Titan vs 🏹 150 Pemanah"
+text = "🧌 1 Colossal Titan vs 🏹 300 Pemanah"
 
 [node name="Preset4" type="Button" parent="UI/Sidebar/Margin/VBox"]
 layout_mode = 2
@@ -571,7 +595,23 @@ theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "🥊 100 Tyson vs ⚔️ 100 Pendekar"
+text = "🥊 200 Tyson vs ⚔️ 200 Pendekar"
+
+[node name="Preset5" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⚡ 500 vs 500 (1000 Pasukan Kolosal)"
+
+[node name="Preset6" type="Button" parent="UI/Sidebar/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🔥 1000 vs 1000 (2000 Perang Akbar)"
 
 [node name="ApplyArmyBtn" type="Button" parent="UI/Sidebar/Margin/VBox"]
 custom_minimum_size = Vector2(0, 38)
