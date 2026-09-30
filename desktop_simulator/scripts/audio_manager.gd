@@ -57,18 +57,27 @@ func play_stream(stream: AudioStreamWAV, volume_db: float = 0.0, pitch: float = 
 	p0.pitch_scale = pitch
 	p0.play()
 
+var last_sound_times: Dictionary = {}
+
+func play_debounced(id: String, stream: AudioStreamWAV, min_interval: float, vol: float, pitch: float) -> void:
+	var now = Time.get_ticks_msec() * 0.001
+	if last_sound_times.has(id) and (now - float(last_sound_times[id])) < min_interval:
+		return
+	last_sound_times[id] = now
+	play_stream(stream, vol, pitch)
+
 func play_hit(is_heavy: bool = false) -> void:
 	var pitch = 0.95 + (randf() - 0.5) * 0.25
 	var vol = -4.0 if not is_heavy else -1.0
-	play_stream(heavy_hit_stream if is_heavy else hit_stream, vol, pitch)
+	play_debounced("hit_heavy" if is_heavy else "hit", heavy_hit_stream if is_heavy else hit_stream, 0.038, vol, pitch)
 
 func play_bow_shoot() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.2
-	play_stream(bow_shoot_stream, -3.0, pitch)
+	play_debounced("bow", bow_shoot_stream, 0.05, -3.0, pitch)
 
 func play_sword_slash() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.25
-	play_stream(sword_slash_stream, -2.5, pitch)
+	play_debounced("sword", sword_slash_stream, 0.038, -2.5, pitch)
 
 func play_horn() -> void:
 	play_stream(horn_stream, 0.0, 1.0)
@@ -78,28 +87,28 @@ func play_victory() -> void:
 
 func play_ult_cast() -> void:
 	var pitch = 0.95 + (randf() - 0.5) * 0.15
-	play_stream(ult_cast_stream, 2.0, pitch)
+	play_debounced("ult_cast", ult_cast_stream, 0.1, 2.0, pitch)
 
 func play_explosion(is_giant: bool = false) -> void:
 	var pitch = 0.85 + (randf() - 0.5) * 0.2
 	var vol = 3.0 if is_giant else 1.0
-	play_stream(explosion_stream, vol, pitch)
+	play_debounced("expl", explosion_stream, 0.08, vol, pitch)
 
 func play_emp() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.15
-	play_stream(emp_stream, 1.5, pitch)
+	play_debounced("emp", emp_stream, 0.1, 1.5, pitch)
 
 func play_whirlwind() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.2
-	play_stream(whirlwind_stream, 0.5, pitch)
+	play_debounced("whirl", whirlwind_stream, 0.1, 0.5, pitch)
 
 func play_block() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.2
-	play_stream(block_stream, 1.5, pitch)
+	play_debounced("block", block_stream, 0.05, 1.5, pitch)
 
 func play_gunshot() -> void:
 	var pitch = 1.0 + (randf() - 0.5) * 0.15
-	play_stream(gunshot_stream, 0.0, pitch)
+	play_debounced("gun", gunshot_stream, 0.035, 0.0, pitch)
 
 func generate_bow_wav() -> AudioStreamWAV:
 	var wav = AudioStreamWAV.new()

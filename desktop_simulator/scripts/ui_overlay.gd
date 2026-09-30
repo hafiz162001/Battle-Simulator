@@ -6,10 +6,13 @@ const BattleUnit = preload("res://scripts/unit.gd")
 @onready var manager: Node3D = $"../BattleManager"
 @onready var camera: Camera3D = $"../Camera3D"
 @onready var audio_mgr: Node = $"../AudioManager"
+@onready var arena: Node3D = $"../DesertArena"
 
 var ult_a_btn: Button = null
 var ult_b_btn: Button = null
 var super_ult_btn: Button = null
+var fps_label: Label = null
+var perf_mode_btn: Button = null
 
 var video_modal: Control = null
 var video_player: VideoStreamPlayer = null
@@ -89,6 +92,18 @@ func _ready() -> void:
 	connect_signals()
 	setup_ult_ui()
 	setup_video_cutscene_modal()
+	setup_fps_and_performance_ui()
+
+func _process(_delta: float) -> void:
+	if fps_label:
+		var fps = Engine.get_frames_per_second()
+		fps_label.text = "⚡ %d FPS" % fps
+		if fps >= 50:
+			fps_label.add_theme_color_override("font_color", Color(0.25, 0.95, 0.45))
+		elif fps >= 30:
+			fps_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.25))
+		else:
+			fps_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.25))
 
 func populate_presets_and_models() -> void:
 	preset_keys = CharacterData.PRESETS.keys()
@@ -395,6 +410,72 @@ func setup_video_cutscene_modal() -> void:
 	bottom_bar_node.add_child(bot_hbox)
 	video_modal.add_child(bottom_bar_node)
 
+func setup_fps_and_performance_ui() -> void:
+	var top_right = get_node_or_null("TopHeader/TopRight")
+	if not top_right:
+		return
+		
+	# FPS Label
+	fps_label = Label.new()
+	fps_label.name = "FPSLabel"
+	fps_label.text = "⚡ 60 FPS"
+	fps_label.add_theme_font_size_override("font_size", 12)
+	fps_label.add_theme_color_override("font_color", Color(0.25, 0.95, 0.45))
+	top_right.add_child(fps_label)
+	top_right.move_child(fps_label, 0)
+	
+	# Crowd 60FPS / Ultra Graphic Toggle Button
+	perf_mode_btn = Button.new()
+	perf_mode_btn.name = "PerfModeBtn"
+	perf_mode_btn.custom_minimum_size = Vector2(140, 40)
+	perf_mode_btn.add_theme_font_size_override("font_size", 11)
+	perf_mode_btn.tooltip_text = "Mode Grafik: CROWD 60FPS (ringan untuk 1000 pasukan) vs ULTRA CINEMATIC"
+	
+	var is_crowd = false
+	if arena and "is_performance_mode" in arena:
+		is_crowd = arena.is_performance_mode
+	update_perf_mode_btn_text(is_crowd)
+	
+	perf_mode_btn.pressed.connect(_on_toggle_perf_mode)
+	top_right.add_child(perf_mode_btn)
+	top_right.move_child(perf_mode_btn, 1)
+
+func update_perf_mode_btn_text(is_crowd: bool) -> void:
+	if not perf_mode_btn:
+		return
+	var style = StyleBoxFlat.new()
+	style.set_corner_radius_all(8)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	
+	if is_crowd:
+		perf_mode_btn.text = "⚡ CROWD 60FPS"
+		style.bg_color = Color(0.08, 0.55, 0.3, 0.95)
+		style.border_color = Color(0.3, 1.0, 0.5, 0.9)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		perf_mode_btn.add_theme_color_override("font_color", Color.WHITE)
+	else:
+		perf_mode_btn.text = "🌟 ULTRA GRAFIK"
+		style.bg_color = Color(0.12, 0.16, 0.25, 0.85)
+		style.border_color = Color(0.95, 0.75, 0.2, 0.8)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		perf_mode_btn.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
+	perf_mode_btn.add_theme_stylebox_override("normal", style)
+
+func _on_toggle_perf_mode() -> void:
+	if arena and arena.has_method("set_performance_mode"):
+		var new_mode = not arena.is_performance_mode
+		arena.set_performance_mode(new_mode)
+		update_perf_mode_btn_text(new_mode)
+
 func play_super_ult_cutscene(team_idx: int = 0) -> void:
 	cutscene_team = team_idx
 	is_cutscene_playing = true
@@ -611,3 +692,8 @@ func update_stats(alive_a: int, total_a: int, alive_b: int, total_b: int, time_s
 			start_btn.text = "🏆 " + winner + " MENANG!"
 		else:
 			start_btn.text = "⚔️ MULAI PERANG!"
+			
+	if arena and "is_performance_mode" in arena and perf_mode_btn:
+		var btn_is_crowd = perf_mode_btn.text.begins_with("⚡")
+		if btn_is_crowd != arena.is_performance_mode:
+			update_perf_mode_btn_text(arena.is_performance_mode)

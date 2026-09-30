@@ -15,6 +15,10 @@ extends Node3D
 const ARENA_BOUND_X := 42.0
 const ARENA_BOUND_Z := 23.5
 
+var world_env_node: WorldEnvironment = null
+var sun_light: DirectionalLight3D = null
+var is_performance_mode: bool = false
+
 func _ready() -> void:
 	setup_lighting_and_environment()
 	setup_city_streets_and_ground()
@@ -117,26 +121,49 @@ func setup_lighting_and_environment() -> void:
 	env.glow_hdr_threshold = 1.02
 	env.glow_hdr_scale = 1.8
 	
-	var world_env := WorldEnvironment.new()
-	world_env.environment = env
-	add_child(world_env)
+	world_env_node = WorldEnvironment.new()
+	world_env_node.environment = env
+	add_child(world_env_node)
 	
 	# Primary Sunlight Casting Crisp Soft Shadows & Volumetric Rays
-	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.98, 0.94)
-	sun.light_energy = 4.2
-	sun.light_indirect_energy = 1.5
-	sun.light_volumetric_fog_energy = 2.4
+	sun_light = DirectionalLight3D.new()
+	sun_light.light_color = Color(1.0, 0.98, 0.94)
+	sun_light.light_energy = 4.2
+	sun_light.light_indirect_energy = 1.5
+	sun_light.light_volumetric_fog_energy = 2.4
 	
-	sun.shadow_enabled = true
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_blend_splits = true
-	sun.directional_shadow_max_distance = 110.0
-	sun.shadow_bias = 0.002
-	sun.shadow_normal_bias = 1.1
-	sun.shadow_blur = 1.2
-	sun.rotation_degrees = Vector3(-38, 48, 0)
-	add_child(sun)
+	sun_light.shadow_enabled = true
+	sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun_light.directional_shadow_blend_splits = true
+	sun_light.directional_shadow_max_distance = 110.0
+	sun_light.shadow_bias = 0.002
+	sun_light.shadow_normal_bias = 1.1
+	sun_light.shadow_blur = 1.2
+	sun_light.rotation_degrees = Vector3(-38, 48, 0)
+	add_child(sun_light)
+
+func set_performance_mode(enabled: bool) -> void:
+	is_performance_mode = enabled
+	if world_env_node and world_env_node.environment:
+		var env = world_env_node.environment
+		if enabled:
+			env.sdfgi_enabled = false
+			env.ssao_enabled = false
+			env.ssr_enabled = false
+			env.volumetric_fog_enabled = false
+			if sun_light:
+				sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+				sun_light.directional_shadow_blend_splits = false
+				sun_light.directional_shadow_max_distance = 60.0
+		else:
+			env.sdfgi_enabled = true
+			env.ssao_enabled = true
+			env.ssr_enabled = true
+			env.volumetric_fog_enabled = true
+			if sun_light:
+				sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+				sun_light.directional_shadow_blend_splits = true
+				sun_light.directional_shadow_max_distance = 110.0
 	
 	# Skylight Fill to illuminate shaded sides of skyscrapers
 	var fill := DirectionalLight3D.new()

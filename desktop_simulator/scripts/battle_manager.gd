@@ -26,6 +26,7 @@ var model_b_id: String = "xbot"
 var team_a_alive: int = 0
 var team_b_alive: int = 0
 var battle_finished: bool = false
+var is_massive_battle: bool = false
 
 var alive_units_a: Array = []
 var alive_units_b: Array = []
@@ -90,6 +91,10 @@ func setup_battle() -> void:
 	
 	team_a_alive = count_a
 	team_b_alive = count_b
+	is_massive_battle = (count_a + count_b) >= 150
+	
+	if arena and arena.has_method("set_performance_mode"):
+		arena.set_performance_mode(is_massive_battle)
 	
 	var conf_a = CharacterData.get_preset(preset_a).duplicate()
 	var conf_b = CharacterData.get_preset(preset_b).duplicate()
@@ -135,7 +140,7 @@ func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, con
 		unit.position = Vector3(px, py, pz)
 		unit.rotation.y = PI / 2.0 if forward_dir > 0 else -PI / 2.0
 		
-		unit.setup(team, model_scene, config, audio_mgr, arena)
+		unit.setup(team, model_scene, config, audio_mgr, arena, self)
 		units.append(unit)
 
 func clear_battle() -> void:
@@ -194,18 +199,23 @@ func _process(delta: float) -> void:
 		var current_team_list = alive_units_a if team_idx == 0 else alive_units_b
 		var enemy_team_list = alive_units_b if team_idx == 0 else alive_units_a
 		var grid = spatial_grid_a if team_idx == 0 else spatial_grid_b
+		var enemy_grid = spatial_grid_b if team_idx == 0 else spatial_grid_a
 		var march_x = 50.0 if team_idx == 0 else -50.0
+		var max_neighbor_checks: int = 6 if is_massive_battle else 10
 		
 		for u in current_team_list:
 			var sep_force = Vector3.ZERO
 			var sep_radius: float = 1.25 * float(u.unit_scale)
 			var sep_radius_sq: float = sep_radius * sep_radius
 			
-			# Query only the 9 neighboring spatial cells instead of all units!
+			# Query only neighboring spatial cells with max neighbor limit to prevent CPU choke
 			var cx = int(floor(u.global_position.x / CELL_SIZE))
 			var cz = int(floor(u.global_position.z / CELL_SIZE))
+			var neighbors_checked: int = 0
 			
 			for nx in range(cx - 1, cx + 2):
+				if neighbors_checked >= max_neighbor_checks:
+					break
 				for nz in range(cz - 1, cz + 2):
 					var nkey = Vector2i(nx, nz)
 					if grid.has(nkey):
@@ -219,16 +229,21 @@ func _process(delta: float) -> void:
 							if d_sq < sep_radius_sq and d_sq > 0.001:
 								var dist = sqrt(d_sq)
 								sep_force += (diff / dist) * (1.0 - dist / sep_radius)
+								neighbors_checked += 1
+								if neighbors_checked >= max_neighbor_checks:
+									break
+					if neighbors_checked >= max_neighbor_checks:
+						break
 								
 			if sep_force.length_squared() > 0.64:
 				sep_force = sep_force.normalized() * 0.8
 				
-			# Fast smart enemy target selection
+			# Fast smart enemy target selection: Check spatial grid first!
 			var target: BattleUnit = null
 			if is_instance_valid(u.target_unit) and not u.target_unit.is_dead and u.retarget_timer > 0.0:
 				target = u.target_unit
 			else:
-				target = find_nearest_in_list(u, enemy_team_list)
+				target = find_nearest_target(u, enemy_grid, enemy_team_list)
 				
 			var forward_target = Vector3(march_x, 0.0, u.global_position.z)
 			u.update_unit(delta, is_running, target, forward_target, sep_force)
@@ -251,6 +266,54 @@ func _process(delta: float) -> void:
 				var survivors = team_a_alive if team_a_alive > 0 else team_b_alive
 				ui.show_victory(winner_name, survivors, battle_time)
 
+func find_nearest_target(unit: BattleUnit, enemy_grid: Dictionary, enemy_list: Array) -> BattleUnit:
+	var u_pos = unit.global_position
+	var cx = int(floor(u_pos.x / CELL_SIZE))
+	var cz = int(floor(u_pos.z / CELL_SIZE))
+	
+	var nearest: BattleUnit = null
+	var min_dist_sq := INF
+	
+	# Concentric rings search (0, 1, 2) in spatial grid
+	for r in range(0, 3):
+		for nx in range(cx - r, cx + r + 1):
+			for nz in range(cz - r, cz + r + 1):
+				if r > 0 and (abs(nx - cx) < r and abs(nz - cz) < r):
+					continue
+				var nkey = Vector2i(nx, nz)
+				if enemy_grid.has(nkey):
+					var enemies = enemy_grid[nkey]
+					for other in enemies:
+						if is_instance_valid(other) and not other.is_dead:
+							var d_sq = u_pos.distance_squared_to(other.global_position)
+							if d_sq < min_dist_sq:
+								min_dist_sq = d_sq
+								nearest = other
+		if nearest != null:
+			return nearest
+			
+	return find_nearest_in_list(unit, enemy_list)
+
+func get_units_in_radius(center: Vector3, radius: float, target_team: int) -> Array:
+	var result: Array = []
+	var grid = spatial_grid_a if target_team == 0 else spatial_grid_b
+	var min_cx = int(floor((center.x - radius) / CELL_SIZE))
+	var max_cx = int(floor((center.x + radius) / CELL_SIZE))
+	var min_cz = int(floor((center.z - radius) / CELL_SIZE))
+	var max_cz = int(floor((center.z + radius) / CELL_SIZE))
+	var r_sq = radius * radius
+	
+	for cx in range(min_cx, max_cx + 1):
+		for cz in range(min_cz, max_cz + 1):
+			var nkey = Vector2i(cx, cz)
+			if grid.has(nkey):
+				var cell_units = grid[nkey]
+				for u in cell_units:
+					if is_instance_valid(u) and not u.is_dead:
+						if center.distance_squared_to(u.global_position) <= r_sq:
+							result.append(u)
+	return result
+
 func find_nearest_in_list(unit: BattleUnit, enemy_list: Array) -> BattleUnit:
 	var nearest: BattleUnit = null
 	var min_dist_sq := INF
@@ -259,9 +322,9 @@ func find_nearest_in_list(unit: BattleUnit, enemy_list: Array) -> BattleUnit:
 	var list_size = enemy_list.size()
 	var step = 1
 	if list_size > 300:
-		step = 5
+		step = 8
 	elif list_size > 120:
-		step = 2
+		step = 4
 		
 	for i in range(0, list_size, step):
 		var other = enemy_list[i]

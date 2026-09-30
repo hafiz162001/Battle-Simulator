@@ -86,6 +86,7 @@ var rest_right_arm: Quaternion = Quaternion.IDENTITY
 
 var audio_manager: Node = null
 var arena: Node3D = null
+var battle_manager: Node3D = null
 var model_root: Node3D = null
 var weapon_rig: Node3D = null
 var death_timer: float = 0.0
@@ -99,10 +100,11 @@ func _process(delta: float) -> void:
 	if is_dead:
 		update_death_process(delta)
 
-func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, p_audio_manager: Node, p_arena: Node3D = null) -> void:
+func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, p_audio_manager: Node, p_arena: Node3D = null, p_battle_manager: Node3D = null) -> void:
 	team = p_team
 	audio_manager = p_audio_manager
 	arena = p_arena
+	battle_manager = p_battle_manager
 	
 	max_hp = preset_config.get("max_hp", 140.0)
 	hp = max_hp
@@ -336,8 +338,9 @@ func update_procedural_movement(delta: float, is_moving: bool) -> void:
 		model_root.rotation.x = deg_to_rad(6.0) # Forward sprint lean
 		model_root.rotation.z = sin(cycle) * deg_to_rad(3.5) # Dynamic torso sway
 		
-		# 2. Procedural leg and arm bone swinging for Skeleton3D
-		if skeleton and is_using_procedural_anim:
+		# 2. Procedural leg and arm bone swinging for Skeleton3D (interleaved on massive battles for 2x performance)
+		var skip_bone_frame = (battle_manager and battle_manager.is_massive_battle and (Engine.get_process_frames() + get_instance_id()) % 2 != 0)
+		if skeleton and is_using_procedural_anim and not skip_bone_frame:
 			var swing = sin(cycle) * 0.65
 			var knee_flex_left = clamp(-sin(cycle) * 0.85, 0.0, 1.2)
 			var knee_flex_right = clamp(sin(cycle) * 0.85, 0.0, 1.2)
@@ -445,38 +448,55 @@ func update_death_process(delta: float) -> void:
 		stain_spawned = true
 		spawn_battle_decal()
 			
-	# After lying on ground for 14 seconds, sink smoothly into asphalt
-	elif death_timer > 14.0:
-		global_position.y -= delta * 0.15
-		if death_timer > 18.0:
+	# After lying on ground, sink smoothly into asphalt (faster cleanup on massive battles)
+	var max_ground_time = 3.5 if (battle_manager and battle_manager.is_massive_battle) else 12.0
+	var max_sink_time = max_ground_time + 2.0
+	if death_timer > max_ground_time:
+		global_position.y -= delta * 0.25
+		if death_timer > max_sink_time:
 			queue_free()
 
 func spawn_pavement_impact_sparks() -> void:
+	if not HitSparksClass.can_spawn(false):
+		return
 	var sparks := HitSparksClass.new()
 	var p = get_parent()
 	if p:
 		p.add_child(sparks)
 		sparks.trigger(global_position + Vector3(0, 0.1, 0), false)
 
+static var active_decals: int = 0
+const MAX_ACTIVE_DECALS: int = 35
+static var shared_decal_mesh: PlaneMesh = null
+static var shared_decal_mat: StandardMaterial3D = null
+
 func spawn_battle_decal() -> void:
+	if active_decals >= MAX_ACTIVE_DECALS:
+		return
 	var p = get_parent()
 	if not p:
 		return
+	active_decals += 1
 	var decal := MeshInstance3D.new()
-	var quad := PlaneMesh.new()
-	var d_size = randf_range(1.2, 1.8) * unit_scale
-	quad.size = Vector2(d_size, d_size)
+	if not shared_decal_mesh:
+		shared_decal_mesh = PlaneMesh.new()
+		shared_decal_mesh.size = Vector2(1.5, 1.5)
+	if not shared_decal_mat:
+		shared_decal_mat = StandardMaterial3D.new()
+		shared_decal_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		shared_decal_mat.albedo_color = Color(0.08, 0.08, 0.1, 0.65)
+		shared_decal_mat.roughness = 0.95
 	
-	var mat := StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.08, 0.08, 0.1, 0.65)
-	mat.roughness = 0.95
-	
-	decal.mesh = quad
-	decal.material_override = mat
+	decal.mesh = shared_decal_mesh
+	decal.material_override = shared_decal_mat
 	decal.position = Vector3(global_position.x, 0.012, global_position.z)
 	decal.rotation.y = randf() * TAU
+	decal.tree_exited.connect(func(): active_decals = max(0, active_decals - 1))
 	p.add_child(decal)
+	var t = get_tree()
+	if t:
+		var ttl = 8.0 if (battle_manager and battle_manager.is_massive_battle) else 20.0
+		t.create_timer(ttl).timeout.connect(decal.queue_free)
 
 func update_unit(delta: float, is_battle_running: bool, nearest_enemy: BattleUnit, forward_target: Vector3, separation_force: Vector3) -> void:
 	if is_dead:
@@ -851,14 +871,18 @@ func execute_melee_impact(step: int) -> void:
 		target_unit.take_damage(actual_damage, global_position)
 		if audio_manager:
 			audio_manager.play_explosion(true)
-		var tree = get_tree()
-		if tree:
-			var opp_team = 1 if team == Team.A else 0
-			var units = tree.get_nodes_in_group("units")
-			for u in units:
-				if is_instance_valid(u) and not u.is_dead and u.team == opp_team and u != target_unit:
-					if global_position.distance_to(u.global_position) <= 5.0:
-						u.take_damage(actual_damage * 0.45, global_position)
+		var opp_team_int = 1 if team == Team.A else 0
+		var candidates: Array = []
+		if battle_manager and battle_manager.has_method("get_units_in_radius"):
+			candidates = battle_manager.get_units_in_radius(global_position, 5.0, opp_team_int)
+		else:
+			var tree = get_tree()
+			if tree:
+				candidates = tree.get_nodes_in_group("units")
+		for u in candidates:
+			if is_instance_valid(u) and not u.is_dead and u != target_unit and u.team != team:
+				if global_position.distance_squared_to(u.global_position) <= 25.0:
+					u.take_damage(actual_damage * 0.45, global_position)
 		return
 		
 	# Mike Tyson Knockout Uppercut on Finisher
@@ -963,23 +987,36 @@ func take_damage(amount: float, attacker_pos: Vector3) -> void:
 		die(kb_dir)
 
 func spawn_damage_number(amount: float) -> void:
+	var is_crit = (amount >= damage * 1.1) or (unit_scale > 2.0)
+	if battle_manager and battle_manager.is_massive_battle and not is_crit:
+		if randf() > 0.15:
+			return # In massive battles, only show 15% of non-crit damage numbers
+	if not DamageNumberClass.can_spawn(is_crit):
+		return
 	var dmg_label = DamageNumberClass.new()
 	get_parent().add_child(dmg_label)
 	dmg_label.global_position = global_position + Vector3((randf() - 0.5) * 0.3, 1.85 * unit_scale, (randf() - 0.5) * 0.3)
-	var is_crit = (amount >= damage * 1.1) or (unit_scale > 2.0)
 	var color = Color(0.96, 0.62, 0.04) if team == Team.A else Color(0.23, 0.51, 0.96)
 	dmg_label.setup(amount, is_crit, color)
 
 func spawn_banner(banner_text: String, banner_color: Color) -> void:
+	if not DamageNumberClass.can_spawn(true):
+		return
 	var dmg_label = DamageNumberClass.new()
 	get_parent().add_child(dmg_label)
 	dmg_label.global_position = global_position + Vector3(0, 2.1 * unit_scale, 0)
 	dmg_label.setup_banner(banner_text, banner_color)
 
 func spawn_hit_sparks() -> void:
+	var is_heavy = unit_scale > 2.0
+	if battle_manager and battle_manager.is_massive_battle and not is_heavy:
+		if randf() > 0.2:
+			return
+	if not HitSparksClass.can_spawn(is_heavy):
+		return
 	var sparks := HitSparksClass.new()
 	get_parent().add_child(sparks)
-	sparks.trigger(global_position + Vector3(0, 1.2 * unit_scale, 0), unit_scale > 2.0)
+	sparks.trigger(global_position + Vector3(0, 1.2 * unit_scale, 0), is_heavy)
 
 func die(kb_dir: Vector3 = Vector3.ZERO) -> void:
 	if is_dead:
@@ -1220,14 +1257,18 @@ func update_ultimate(delta: float) -> void:
 			model_root.rotation_degrees = Vector3.ZERO
 
 func damage_aoe_enemies(center: Vector3, radius: float, dmg: float, kb: float, stun: bool = false, vertical_kb: float = 0.0) -> void:
-	var tree = get_tree()
-	if not tree:
-		return
 	var opp_team = Team.B if team == Team.A else Team.A
-	var all_units = tree.get_nodes_in_group("units")
+	var opp_team_int = 1 if opp_team == Team.B else 0
+	var candidates: Array = []
+	if battle_manager and battle_manager.has_method("get_units_in_radius"):
+		candidates = battle_manager.get_units_in_radius(center, radius, opp_team_int)
+	else:
+		var tree = get_tree()
+		if tree:
+			candidates = tree.get_nodes_in_group("units")
 	
 	var r_sq = radius * radius
-	for u in all_units:
+	for u in candidates:
 		if is_instance_valid(u) and not u.is_dead and u.team == opp_team:
 			var d_sq = u.global_position.distance_squared_to(center)
 			if d_sq <= r_sq:

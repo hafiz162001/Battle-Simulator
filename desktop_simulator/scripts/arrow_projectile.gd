@@ -105,28 +105,41 @@ func _process(delta: float) -> void:
 		global_position.y = 0.05
 		is_stuck = true
 		velocity = Vector3.ZERO
+		set_process(false)
+		var t = get_tree()
+		if t:
+			t.create_timer(3.5).timeout.connect(queue_free)
 		return
 		
 	# Check collision with opposing units only when close to soldier height level
 	if global_position.y > 3.5:
 		return
 		
-	var tree = get_tree()
-	if not tree:
-		return
 	var opp_team = 1 if shooter_team == 0 else 0
-	var units = tree.get_nodes_in_group("units")
-	
-	for u in units:
-		if is_instance_valid(u) and not u.is_dead and u.team == opp_team:
+	var p = get_parent()
+	if p and p.has_method("get_units_in_radius"):
+		var candidates = p.get_units_in_radius(global_position, 1.4, opp_team)
+		for u in candidates:
 			var u_center = u.global_position + Vector3(0, 1.0 * u.unit_scale, 0)
-			var hit_radius = 0.85 * u.unit_scale
+			var hit_radius = 0.9 * u.unit_scale
 			if global_position.distance_squared_to(u_center) <= hit_radius * hit_radius:
 				hit_unit(u)
 				break
+	else:
+		var tree = get_tree()
+		if tree:
+			var units = tree.get_nodes_in_group("units")
+			for u in units:
+				if is_instance_valid(u) and not u.is_dead and u.team == opp_team:
+					var u_center = u.global_position + Vector3(0, 1.0 * u.unit_scale, 0)
+					var hit_radius = 0.85 * u.unit_scale
+					if global_position.distance_squared_to(u_center) <= hit_radius * hit_radius:
+						hit_unit(u)
+						break
 
 func hit_unit(target: Node) -> void:
 	is_stuck = true
+	set_process(false)
 	target.take_damage(damage, global_position - velocity.normalized())
 	
 	# Attach arrow to target
@@ -138,7 +151,13 @@ func hit_unit(target: Node) -> void:
 	global_position = old_pos
 	global_rotation = old_rot
 	
-	# Spawn impact sparks
-	var sparks := HitSparksClass.new()
-	target.get_parent().add_child(sparks)
-	sparks.trigger(global_position, false)
+	# Auto cleanup arrow
+	var t = get_tree()
+	if t:
+		t.create_timer(4.5).timeout.connect(queue_free)
+	
+	# Spawn impact sparks only if budget allows
+	if HitSparksClass.can_spawn(false):
+		var sparks := HitSparksClass.new()
+		target.get_parent().add_child(sparks)
+		sparks.trigger(global_position, false)

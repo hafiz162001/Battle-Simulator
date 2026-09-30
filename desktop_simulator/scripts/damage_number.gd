@@ -6,12 +6,24 @@ var timer: float = 0.0
 var rise_speed: float = 2.5
 var start_scale: Vector3 = Vector3(1.2, 1.2, 1.2)
 
+static var active_count: int = 0
+const MAX_ACTIVE: int = 35
+
+static func can_spawn(is_critical: bool = false) -> bool:
+	if is_critical:
+		return active_count < (MAX_ACTIVE + 15)
+	return active_count < MAX_ACTIVE
+
 func _ready() -> void:
+	active_count += 1
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	font_size = 32
 	outline_size = 8
 	outline_modulate = Color(0, 0, 0, 0.9)
 	scale = start_scale
+
+func _exit_tree() -> void:
+	active_count = max(0, active_count - 1)
 
 func setup(amount: float, is_critical: bool, team_color: Color) -> void:
 	if is_critical:

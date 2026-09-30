@@ -1,7 +1,16 @@
 class_name HitSparks
 extends CPUParticles3D
 
+static var active_count: int = 0
+const MAX_ACTIVE: int = 25
+
+static func can_spawn(is_crit: bool = false) -> bool:
+	if is_crit:
+		return active_count < (MAX_ACTIVE + 15)
+	return active_count < MAX_ACTIVE
+
 func _ready() -> void:
+	active_count += 1
 	emitting = false
 	one_shot = true
 	explosiveness = 0.95
@@ -38,3 +47,6 @@ func trigger(pos: Vector3, is_crit: bool = false) -> void:
 	emitting = true
 	await get_tree().create_timer(0.6).timeout
 	queue_free()
+
+func _exit_tree() -> void:
+	active_count = max(0, active_count - 1)
