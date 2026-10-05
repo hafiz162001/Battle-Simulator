@@ -106,7 +106,7 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 	arena = p_arena
 	battle_manager = p_battle_manager
 	
-	max_hp = preset_config.get("max_hp", 140.0)
+	max_hp = preset_config.get("max_hp", 500.0)
 	hp = max_hp
 	damage = preset_config.get("damage", 38.0)
 	move_speed = preset_config.get("speed", 8.0)
@@ -117,7 +117,7 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 	preset_id = preset_config.get("id", "swordsman")
 	weapon_type = preset_config.get("weapon_type", "fists")
 	is_ranged = preset_config.get("is_ranged", false)
-	energy = randf() * 25.0 # Stagger initial energy slightly so not everyone ults simultaneously
+	energy = 0.0 # Mana starts at 0, charges to 100% during combat!
 	
 	scale = Vector3(unit_scale, unit_scale, unit_scale)
 	attack_cooldown = randf() * 0.4
@@ -595,7 +595,7 @@ func update_archer_combat(delta: float, dist_xz: float, dir_to_target: Vector3, 
 		is_attacking = true
 		
 		# Tactical Kiting / Backpedal if enemy gets uncomfortably close
-		var min_kite_dist = 4.2 * unit_scale
+		var min_kite_dist = 6.0 * unit_scale
 		if dist_xz < min_kite_dist:
 			var retreat_dir = -dir_to_target.normalized()
 			velocity = velocity.lerp(retreat_dir * (move_speed * 0.72), delta * 7.0)
@@ -683,7 +683,7 @@ func update_archer_combat(delta: float, dist_xz: float, dir_to_target: Vector3, 
 		if backward_push < 0.0:
 			clean_sep -= enemy_dir * backward_push
 			
-		var combined_dir = (enemy_dir * 1.5 + clean_sep * 0.35).normalized()
+		var combined_dir = (enemy_dir * 1.0 + clean_sep * 0.85).normalized()
 		velocity = velocity.lerp(combined_dir * move_speed, delta * 8.0)
 		global_position += velocity * delta
 		ground_unit(delta)
@@ -728,10 +728,11 @@ func update_melee_combat(delta: float, dist_xz: float, dir_to_target: Vector3, e
 	if is_instance_valid(target_unit) and not target_unit.is_dead and dist_xz <= effective_range:
 		is_attacking = true
 		
-		# Tactical Footwork: Circle-Strafing during melee combat!
+		# Tactical Footwork: Circle-Strafing during melee combat with spacing separation!
 		var tangent = Vector3(-dir_to_target.z, 0, dir_to_target.x).normalized()
 		var strafe_speed = sin(Time.get_ticks_msec() * 0.0035 + strafe_offset) * (move_speed * 0.42)
-		velocity = velocity.lerp(tangent * strafe_speed, delta * 7.0)
+		var combat_sep = separation_force * 0.65
+		velocity = velocity.lerp(tangent * strafe_speed + combat_sep, delta * 7.0)
 		global_position += velocity * delta
 		ground_unit(delta)
 		update_procedural_movement(delta, false)
@@ -780,7 +781,7 @@ func update_melee_combat(delta: float, dist_xz: float, dir_to_target: Vector3, e
 		if backward_push < 0.0:
 			clean_sep -= enemy_dir * backward_push
 			
-		var combined_dir = (enemy_dir * 1.5 + clean_sep * 0.35).normalized()
+		var combined_dir = (enemy_dir * 1.0 + clean_sep * 0.85).normalized()
 		velocity = velocity.lerp(combined_dir * move_speed, delta * 8.0)
 		global_position += velocity * delta
 		ground_unit(delta)
@@ -968,6 +969,8 @@ func take_damage(amount: float, attacker_pos: Vector3) -> void:
 	# Direct Unblocked Hit
 	hp -= amount
 	energy = min(max_energy, energy + amount * 0.45 + 10.0)
+	if battle_manager and battle_manager.has_method("add_super_mana"):
+		battle_manager.add_super_mana(0.35)
 	
 	stagger_timer = 0.22
 	stagger_intensity = clamp(amount / max(1.0, damage), 0.5, 2.0)
@@ -1056,8 +1059,7 @@ func cast_ultimate() -> void:
 	is_ulting = true
 	ult_timer = 0.0
 	ult_hits_dealt = 0
-	energy = 0.0
-	ult_cooldown = 8.0 # Cooldown before next ult can charge & trigger
+	ult_cooldown = 6.0
 	is_attacking = true
 	velocity = Vector3.ZERO
 	

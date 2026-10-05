@@ -47,17 +47,17 @@ func setup_lighting_and_environment() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	
-	# Crisp City Sky with Horizon Atmospheric Gradient
+	# Crisp City Sky with Horizon Atmospheric Gradient - Bright clear daytime
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("#1e3a8a")
-	sky_mat.sky_horizon_color = Color("#93c5fd")
-	sky_mat.sky_curve = 0.12
-	sky_mat.sky_energy_multiplier = 1.2
+	sky_mat.sky_top_color = Color("#2563eb") # Vibrant clean sky blue
+	sky_mat.sky_horizon_color = Color("#bfdbfe") # Brighter atmospheric horizon
+	sky_mat.sky_curve = 0.10
+	sky_mat.sky_energy_multiplier = 1.45
 	
-	sky_mat.ground_bottom_color = Color("#0f172a")
-	sky_mat.ground_horizon_color = Color("#475569")
+	sky_mat.ground_bottom_color = Color("#1e293b")
+	sky_mat.ground_horizon_color = Color("#64748b")
 	sky_mat.ground_curve = 0.08
-	sky_mat.ground_energy_multiplier = 0.95
+	sky_mat.ground_energy_multiplier = 1.15
 	
 	sky_mat.sun_angle_max = 2.4
 	sky_mat.sun_curve = 0.12
@@ -66,34 +66,34 @@ func setup_lighting_and_environment() -> void:
 	sky.sky_material = sky_mat
 	env.sky = sky
 	
-	# Ambient Sky Fill
+	# Ambient Sky Fill - Significantly more ambient light to eliminate murky shadows
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 0.70
-	env.ambient_light_color = Color("#cbd5e1")
-	env.ambient_light_energy = 1.05
+	env.ambient_light_sky_contribution = 0.75
+	env.ambient_light_color = Color("#e2e8f0")
+	env.ambient_light_energy = 1.35
 	
-	# Atmospheric City Haze & Volumetric Fog
+	# Atmospheric City Haze & Volumetric Fog - Lighter and clearer
 	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.0055
-	env.volumetric_fog_albedo = Color(0.88, 0.94, 1.0)
-	env.volumetric_fog_emission = Color(0.12, 0.18, 0.28) * 0.12
-	env.volumetric_fog_emission_energy = 0.6
+	env.volumetric_fog_density = 0.003
+	env.volumetric_fog_albedo = Color(0.92, 0.96, 1.0)
+	env.volumetric_fog_emission = Color(0.18, 0.24, 0.35) * 0.12
+	env.volumetric_fog_emission_energy = 0.8
 	env.volumetric_fog_anisotropy = 0.65
-	env.volumetric_fog_length = 240.0
+	env.volumetric_fog_length = 260.0
 	
 	# Real-Time SDFGI for Realistic Building Light Bounce & Canyon Shading
 	env.sdfgi_enabled = true
 	env.sdfgi_use_occlusion = true
-	env.sdfgi_bounce_feedback = 0.65
+	env.sdfgi_bounce_feedback = 0.7
 	env.sdfgi_cascades = 4
 	env.sdfgi_min_cell_size = 0.3
-	env.sdfgi_energy = 1.15
+	env.sdfgi_energy = 1.25
 	
 	# SSAO for Deep Contact Shadows around Curbs, Buildings & Soldiers
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
-	env.ssao_intensity = 3.6
-	env.ssao_power = 1.6
+	env.ssao_intensity = 2.6
+	env.ssao_power = 1.4
 	env.ssao_detail = 0.85
 	
 	# Screen Space Reflections (SSR) for Wet Asphalt & Glass Towers
@@ -103,20 +103,20 @@ func setup_lighting_and_environment() -> void:
 	env.ssr_fade_out = 2.2
 	env.ssr_depth_tolerance = 0.2
 	
-	# ACES Filmic Tone Mapping & High Dynamic Contrast
+	# ACES Filmic Tone Mapping & High Dynamic Contrast - Brighter exposure & crisp vibrant daylight
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.14
-	env.tonemap_white = 5.4
+	env.tonemap_exposure = 1.28
+	env.tonemap_white = 5.6
 	
 	env.adjustment_enabled = true
-	env.adjustment_brightness = 1.03
-	env.adjustment_contrast = 1.16
-	env.adjustment_saturation = 1.18
+	env.adjustment_brightness = 1.08
+	env.adjustment_contrast = 1.10
+	env.adjustment_saturation = 1.16
 	
 	env.glow_enabled = true
 	env.glow_normalized = true
-	env.glow_intensity = 0.50
-	env.glow_bloom = 0.18
+	env.glow_intensity = 0.45
+	env.glow_bloom = 0.16
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.glow_hdr_threshold = 1.02
 	env.glow_hdr_scale = 1.8
@@ -127,10 +127,10 @@ func setup_lighting_and_environment() -> void:
 	
 	# Primary Sunlight Casting Crisp Soft Shadows & Volumetric Rays
 	sun_light = DirectionalLight3D.new()
-	sun_light.light_color = Color(1.0, 0.98, 0.94)
-	sun_light.light_energy = 4.2
-	sun_light.light_indirect_energy = 1.5
-	sun_light.light_volumetric_fog_energy = 2.4
+	sun_light.light_color = Color(1.0, 0.99, 0.96)
+	sun_light.light_energy = 4.8
+	sun_light.light_indirect_energy = 2.0
+	sun_light.light_volumetric_fog_energy = 2.2
 	
 	sun_light.shadow_enabled = true
 	sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
@@ -139,8 +139,16 @@ func setup_lighting_and_environment() -> void:
 	sun_light.shadow_bias = 0.002
 	sun_light.shadow_normal_bias = 1.1
 	sun_light.shadow_blur = 1.2
-	sun_light.rotation_degrees = Vector3(-38, 48, 0)
+	sun_light.rotation_degrees = Vector3(-42, 45, 0)
 	add_child(sun_light)
+
+	# Skylight Fill to softly illuminate shaded sides of buildings and units
+	var fill := DirectionalLight3D.new()
+	fill.light_color = Color("#b0c4de")
+	fill.light_energy = 1.15
+	fill.shadow_enabled = false
+	fill.rotation_degrees = Vector3(30, -135, 0)
+	add_child(fill)
 
 func set_performance_mode(enabled: bool) -> void:
 	is_performance_mode = enabled
@@ -164,14 +172,6 @@ func set_performance_mode(enabled: bool) -> void:
 				sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 				sun_light.directional_shadow_blend_splits = true
 				sun_light.directional_shadow_max_distance = 110.0
-	
-	# Skylight Fill to illuminate shaded sides of skyscrapers
-	var fill := DirectionalLight3D.new()
-	fill.light_color = Color("#94a3b8")
-	fill.light_energy = 0.70
-	fill.shadow_enabled = false
-	fill.rotation_degrees = Vector3(25, -132, 0)
-	add_child(fill)
 
 # ==============================================================================
 # 3. ASPHALT BOULEVARD, ROAD MARKINGS, CROSSWALKS & CONCRETE SIDEWALKS
@@ -194,9 +194,9 @@ func setup_city_streets_and_ground() -> void:
 	noise_tex.noise = noise
 	
 	var asphalt_mat := StandardMaterial3D.new()
-	asphalt_mat.albedo_color = Color("#181b20") # Deep realistic asphalt
-	asphalt_mat.roughness = 0.38 # Glossy damp asphalt with puddle specular glints
-	asphalt_mat.metallic = 0.12
+	asphalt_mat.albedo_color = Color("#323742") # Clean modern paved asphalt (brighter and clearer)
+	asphalt_mat.roughness = 0.42
+	asphalt_mat.metallic = 0.10
 	asphalt_mat.normal_enabled = true
 	asphalt_mat.normal_texture = noise_tex
 	asphalt_mat.uv1_scale = Vector3(32.0, 22.0, 1.0)
@@ -209,7 +209,7 @@ func setup_city_streets_and_ground() -> void:
 	
 	# B. Concrete Sidewalks (North and South)
 	var sidewalk_mat := StandardMaterial3D.new()
-	sidewalk_mat.albedo_color = Color("#94a3b8")
+	sidewalk_mat.albedo_color = Color("#cbd5e1") # Clean light grey sidewalk concrete
 	sidewalk_mat.roughness = 0.82
 	
 	# North Sidewalk

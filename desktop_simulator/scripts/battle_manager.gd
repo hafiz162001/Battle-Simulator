@@ -15,6 +15,7 @@ var custom_models: Dictionary = {}
 var units: Array = []
 var is_running: bool = false
 var battle_time: float = 0.0
+var super_mana: float = 0.0
 
 var count_a: int = 60
 var count_b: int = 60
@@ -87,6 +88,7 @@ func setup_battle() -> void:
 	is_running = false
 	battle_finished = false
 	battle_time = 0.0
+	super_mana = 0.0
 	Engine.time_scale = 1.0
 	
 	team_a_alive = count_a
@@ -102,37 +104,38 @@ func setup_battle() -> void:
 	var scene_a = loaded_models.get(model_a_id, loaded_models.get("soldier"))
 	var scene_b = loaded_models.get(model_b_id, loaded_models.get("xbot"))
 	
-	# Spawn Team A at x = -20.0
-	spawn_army(BattleUnit.Team.A, count_a, scene_a, conf_a, -20.0, 1.0)
+	# Spawn Team A at x = -22.0
+	spawn_army(BattleUnit.Team.A, count_a, scene_a, conf_a, -22.0, 1.0)
 	
-	# Spawn Team B at x = 20.0
-	spawn_army(BattleUnit.Team.B, count_b, scene_b, conf_b, 20.0, -1.0)
+	# Spawn Team B at x = 22.0
+	spawn_army(BattleUnit.Team.B, count_b, scene_b, conf_b, 22.0, -1.0)
 	
 	update_hud()
 
 func update_hud() -> void:
 	if ui and ui.has_method("update_stats"):
-		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, 0.0, 0.0)
+		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, 0.0)
 
-func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, config: Dictionary, _start_x: float, forward_dir: float) -> void:
-	var max_cols: int = 30 if count > 200 else (20 if count > 80 else 10)
-	var cols: int = clamp(int(ceil(sqrt(float(count) * 1.6))), 4, max_cols)
+func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, config: Dictionary, start_x: float, forward_dir: float) -> void:
+	var max_cols: int = 24 if count > 200 else (16 if count > 80 else 10)
+	var cols: int = clamp(int(ceil(sqrt(float(count) * 1.5))), 4, max_cols)
 	var rows: int = int(ceil(float(count) / float(cols)))
 	
-	var usable_width_z: float = 36.0
-	var spacing_z: float = clamp(usable_width_z / float(cols), 0.75, 1.4)
+	# Widen spacing so units do not overlap or bunch up
+	var usable_width_z: float = 34.0
+	var spacing_z: float = clamp(usable_width_z / float(cols), 1.8, 2.8)
 	
-	var usable_depth_x: float = 28.0
-	var spacing_x: float = clamp(usable_depth_x / float(max(rows, 1)), 0.65, 1.3)
+	var usable_depth_x: float = 24.0
+	var spacing_x: float = clamp(usable_depth_x / float(max(rows, 1)), 2.0, 3.0)
 	
-	var actual_start_x: float = -6.5 if forward_dir > 0 else 6.5
+	var actual_start_x: float = start_x
 	
 	for i in range(count):
 		var row = int(i / cols)
 		var col = i % cols
 		
-		var px = actual_start_x + (-row * spacing_x if forward_dir > 0 else row * spacing_x) + (randf() - 0.5) * 0.15
-		var pz = (col - (float(cols) - 1.0) * 0.5) * spacing_z + (randf() - 0.5) * 0.15
+		var px = actual_start_x + (-row * spacing_x if forward_dir > 0 else row * spacing_x) + (randf() - 0.5) * 0.25
+		var pz = (col - (float(cols) - 1.0) * 0.5) * spacing_z + (randf() - 0.5) * 0.25
 		var py = arena.get_ground_height(px, pz) if arena else 0.0
 		
 		var unit := BattleUnit.new()
@@ -152,6 +155,8 @@ func clear_battle() -> void:
 func _process(delta: float) -> void:
 	if is_running:
 		battle_time += delta
+		# Super Mana fills up quickly (~8-10 seconds of combat to 100%)
+		super_mana = clamp(super_mana + delta * 8.5, 0.0, 100.0)
 		
 	alive_units_a.clear()
 	alive_units_b.clear()
@@ -205,7 +210,7 @@ func _process(delta: float) -> void:
 		
 		for u in current_team_list:
 			var sep_force = Vector3.ZERO
-			var sep_radius: float = 1.25 * float(u.unit_scale)
+			var sep_radius: float = 2.2 * float(u.unit_scale)
 			var sep_radius_sq: float = sep_radius * sep_radius
 			
 			# Query only neighboring spatial cells with max neighbor limit to prevent CPU choke
@@ -235,8 +240,8 @@ func _process(delta: float) -> void:
 					if neighbors_checked >= max_neighbor_checks:
 						break
 								
-			if sep_force.length_squared() > 0.64:
-				sep_force = sep_force.normalized() * 0.8
+			if sep_force.length_squared() > 1.44:
+				sep_force = sep_force.normalized() * 1.2
 				
 			# Fast smart enemy target selection: Check spatial grid first!
 			var target: BattleUnit = null
@@ -252,7 +257,7 @@ func _process(delta: float) -> void:
 	var avg_energy_a = (energy_sum_a / float(team_a_alive)) if team_a_alive > 0 else 0.0
 	var avg_energy_b = (energy_sum_b / float(team_b_alive)) if team_b_alive > 0 else 0.0
 	if ui and ui.has_method("update_stats"):
-		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, avg_energy_a, avg_energy_b)
+		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, super_mana)
 		
 	# Check battle conclusion
 	if is_running and not battle_finished:
@@ -349,11 +354,20 @@ func toggle_pause() -> bool:
 func set_speed(speed: float) -> void:
 	Engine.time_scale = speed
 
-func trigger_team_ultimate(p_team: BattleUnit.Team) -> void:
+func reset_super_mana() -> void:
+	super_mana = 0.0
+
+func add_super_mana(amount: float) -> void:
+	super_mana = clamp(super_mana + amount, 0.0, 100.0)
+
+func trigger_team_ultimate(p_team: BattleUnit.Team) -> bool:
 	var list = alive_units_a if p_team == BattleUnit.Team.A else alive_units_b
+	var triggered: bool = false
 	for u in list:
 		if is_instance_valid(u) and not u.is_dead:
 			u.force_cast_ultimate()
+			triggered = true
+	return triggered
 
 func get_team_energy_percent(p_team: BattleUnit.Team) -> float:
 	var list = alive_units_a if p_team == BattleUnit.Team.A else alive_units_b

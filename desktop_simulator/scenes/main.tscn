@@ -140,18 +140,22 @@ corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal"]
-bg_color = Color(0.06, 0.07, 0.1, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.96, 0.62, 0.04, 0.85)
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.04, 0.06, 0.12, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.65, 0.12, 0.85)
 corner_radius_top_left = 16
 corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
-shadow_color = Color(0, 0, 0, 0.6)
-shadow_size = 24
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 14
 
 [node name="Main" type="Node3D"]
 
@@ -175,15 +179,15 @@ script = ExtResource("4_ui")
 layout_mode = 3
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 80.0
+offset_bottom = 180.0
 grow_horizontal = 2
 
 [node name="LogoPanel" type="PanelContainer" parent="UI/TopHeader"]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 16.0
-offset_right = 260.0
-offset_bottom = 60.0
+offset_right = 270.0
+offset_bottom = 68.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_glass_pill")
 
 [node name="HBox" type="HBoxContainer" parent="UI/TopHeader/LogoPanel"]
@@ -217,10 +221,10 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -270.0
-offset_top = 14.0
-offset_right = 270.0
-offset_bottom = 66.0
+offset_left = -490.0
+offset_top = 8.0
+offset_right = 490.0
+offset_bottom = 104.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_glass_pill")
 
@@ -250,7 +254,7 @@ horizontal_alignment = 1
 
 [node name="CountA" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamA"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "60 / 60"
 horizontal_alignment = 1
 
@@ -286,7 +290,7 @@ horizontal_alignment = 1
 
 [node name="CountB" type="Label" parent="UI/TopHeader/ScoreBox/Margin/HBox/TeamB"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "60 / 60"
 horizontal_alignment = 1
 
@@ -295,25 +299,15 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -270.0
+offset_left = -120.0
 offset_top = 16.0
 offset_right = -20.0
 offset_bottom = 58.0
 grow_horizontal = 0
-theme_override_constants/separation = 8
 alignment = 2
 
-[node name="ToggleSidebarBtn" type="Button" parent="UI/TopHeader/TopRight"]
-custom_minimum_size = Vector2(136, 40)
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "⚙️ Formasi Pasukan"
-
 [node name="SoundBtn" type="Button" parent="UI/TopHeader/TopRight"]
-custom_minimum_size = Vector2(86, 40)
+custom_minimum_size = Vector2(86, 38)
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
@@ -629,9 +623,9 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -440.0
-offset_top = -68.0
-offset_right = 440.0
+offset_left = -710.0
+offset_top = -82.0
+offset_right = 710.0
 offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -751,80 +745,115 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 text = "2.5x"
 
+[node name="Sep3" type="VSeparator" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+
+[node name="UltGroup" type="HBoxContainer" parent="UI/BottomBar/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UltABtn" type="Button" parent="UI/BottomBar/HBox/UltGroup"]
+custom_minimum_size = Vector2(110, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⚡ ULT A [1]"
+
+[node name="UltBBtn" type="Button" parent="UI/BottomBar/HBox/UltGroup"]
+custom_minimum_size = Vector2(110, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "⚡ ULT B [2]"
+
+[node name="SuperUltBtn" type="Button" parent="UI/BottomBar/HBox/UltGroup"]
+custom_minimum_size = Vector2(210, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🔮 MANA SUPER: 0% [3]"
+
 [node name="VictoryModal" type="Control" parent="UI"]
 visible = false
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -340.0
+offset_top = 74.0
+offset_right = 340.0
+offset_bottom = 138.0
 grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Dim" type="ColorRect" parent="UI/VictoryModal"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.65)
+mouse_filter = 2
 
 [node name="Card" type="PanelContainer" parent="UI/VictoryModal"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -140.0
-offset_right = 220.0
-offset_bottom = 140.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
 
 [node name="Margin" type="MarginContainer" parent="UI/VictoryModal/Card"]
 layout_mode = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 6
 
-[node name="VBox" type="VBoxContainer" parent="UI/VictoryModal/Card/Margin"]
+[node name="HBox" type="HBoxContainer" parent="UI/VictoryModal/Card/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 14
 alignment = 1
 
-[node name="Title" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+[node name="InfoVBox" type="VBoxContainer" parent="UI/VictoryModal/Card/Margin/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.62, 0.04, 1)
-theme_override_font_sizes/font_size = 24
-text = "🏆 KEMENANGAN TEMPUR!"
-horizontal_alignment = 1
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+alignment = 1
 
-[node name="WinnerLbl" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+[node name="WinnerLbl" type="Label" parent="UI/VictoryModal/Card/Margin/HBox/InfoVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "KUBU A MENANG!"
-horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.98, 0.72, 0.15, 1)
+theme_override_font_sizes/font_size = 14
+text = "🏆 KUBU A MENANG!"
 
-[node name="StatsLbl" type="Label" parent="UI/VictoryModal/Card/Margin/VBox"]
+[node name="StatsLbl" type="Label" parent="UI/VictoryModal/Card/Margin/HBox/InfoVBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.82, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 11
 text = "Sisa Pasukan: 42 | Durasi: 00:35"
-horizontal_alignment = 1
 
-[node name="RematchBtn" type="Button" parent="UI/VictoryModal/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 44)
+[node name="BtnHBox" type="HBoxContainer" parent="UI/VictoryModal/Card/Margin/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="RematchBtn" type="Button" parent="UI/VictoryModal/Card/Margin/HBox/BtnHBox"]
+custom_minimum_size = Vector2(130, 36)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 12
 theme_override_styles/normal = SubResource("StyleBoxFlat_primary")
 theme_override_styles/hover = SubResource("StyleBoxFlat_primary_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_primary_pressed")
-text = "🔄 Tanding Ulang (Rematch)"
+text = "🔄 Tanding Ulang"
+
+[node name="CloseBtn" type="Button" parent="UI/VictoryModal/Card/Margin/HBox/BtnHBox"]
+custom_minimum_size = Vector2(105, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "✕ Sembunyikan"
 
 [node name="CustomModelDialog" type="FileDialog" parent="UI"]
 title = "Pilih File 3D Sendiri (.glb / .gltf)"

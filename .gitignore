@@ -3,7 +3,7 @@
 *.translation
 
 # Engine binaries & archives (>100MB limit on GitHub)
-tools/
+/tools/
 *.zip
 
 # System & IDE files
@@ -12,4 +12,6 @@ Thumbs.db
 *.tmp
 *.log
 .vscode/
-.idea/
+# Screenshots
+screenshot_*.png
+screenshot_*.png.import
