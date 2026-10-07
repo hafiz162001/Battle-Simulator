@@ -47,6 +47,8 @@ func load_builtin_models() -> void:
 		loaded_models["xbot"] = load("res://models/Xbot.glb")
 	if ResourceLoader.exists("res://models/RobotExpressive.glb"):
 		loaded_models["robot_expressive"] = load("res://models/RobotExpressive.glb")
+	if ResourceLoader.exists("res://models/jokowi.glb"):
+		loaded_models["jokowi"] = load("res://models/jokowi.glb")
 
 func scan_custom_models() -> void:
 	var dir_path = "res://../custom_models"
@@ -267,8 +269,17 @@ func _process(delta: float) -> void:
 			if audio_mgr:
 				audio_mgr.play_victory()
 			if ui and ui.has_method("show_victory"):
-				var winner_name = "KUBU A (" + CharacterData.get_preset(preset_a).get("name") + ")" if team_a_alive > 0 else "KUBU B (" + CharacterData.get_preset(preset_b).get("name") + ")"
-				var survivors = team_a_alive if team_a_alive > 0 else team_b_alive
+				var winner_name := ""
+				var survivors := 0
+				if team_a_alive > 0 and team_b_alive == 0:
+					winner_name = "KUBU A (" + CharacterData.get_preset(preset_a).get("name") + ")"
+					survivors = team_a_alive
+				elif team_b_alive > 0 and team_a_alive == 0:
+					winner_name = "KUBU B (" + CharacterData.get_preset(preset_b).get("name") + ")"
+					survivors = team_b_alive
+				else:
+					winner_name = "SERI (SEMUA PASUKAN GUGUR BERSAMA)"
+					survivors = 0
 				ui.show_victory(winner_name, survivors, battle_time)
 
 func find_nearest_target(unit: BattleUnit, enemy_grid: Dictionary, enemy_list: Array) -> BattleUnit:

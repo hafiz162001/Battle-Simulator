@@ -19,6 +19,7 @@ var video_player: VideoStreamPlayer = null
 var is_cutscene_playing: bool = false
 var cutscene_team: int = 0
 
+
 # Top HUD
 @onready var name_a_label: Label = $TopHeader/ScoreBox/Margin/HBox/TeamA/NameA
 @onready var count_a_label: Label = $TopHeader/ScoreBox/Margin/HBox/TeamA/CountA
@@ -103,6 +104,15 @@ var current_cam_idx: int = 0
 @onready var custom_model_dialog: FileDialog = $CustomModelDialog
 var importing_team: String = "A"
 
+# Custom Model & Element Center Modal
+var custom_model_modal: Control = null
+var modal_model_opt_a: OptionButton = null
+var modal_elem_opt_a: OptionButton = null
+var modal_model_opt_b: OptionButton = null
+var modal_elem_opt_b: OptionButton = null
+var modal_apply_btn: Button = null
+var modal_close_btn: Button = null
+
 # Bottom Bar
 @onready var reels_btn: Button = $BottomBar/HBox/CamGroup/ReelsBtn
 @onready var drone_btn: Button = $BottomBar/HBox/CamGroup/DroneBtn
@@ -133,6 +143,7 @@ func _ready() -> void:
 	connect_signals()
 	setup_video_cutscene_modal()
 	setup_fps_and_performance_ui()
+	setup_custom_model_modal()
 
 func _process(_delta: float) -> void:
 	if fps_label:
@@ -392,11 +403,11 @@ func setup_retro_pixel_gui_theme() -> void:
 		var logo_title = logo_panel.find_child("Title")
 		if logo_title:
 			logo_title.add_theme_color_override("font_color", Color(0.24, 0.14, 0.08))
-			logo_title.text = "⚔️ CITY WARZ 3D"
+			logo_title.text = "⚔️ VILLAGE WARZ 3D"
 		var logo_sub = logo_panel.find_child("Sub")
 		if logo_sub:
 			logo_sub.add_theme_color_override("font_color", Color(0.6, 0.4, 0.25))
-			logo_sub.text = "RETRO PIXEL ARENA"
+			logo_sub.text = "PEDESAAN ASRI • PASTORAL VALLEY"
 
 	# 2. ScoreBox (Main Player Profile Card inspired by SIMPLE PIXEL GUI #1)
 	var score_box = get_node_or_null("TopHeader/ScoreBox")
@@ -945,14 +956,14 @@ func setup_video_cutscene_modal() -> void:
 	top_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	
 	var title_lbl := Label.new()
-	title_lbl.text = "🚨 PERINGATAN: PROTOKOL SUPER ULTIMATE IKN DIAKTIFKAN! 🚨"
+	title_lbl.text = "🚨 PROTOKOL SUPER ULTIMATE: WHOOSH & GARUDA API! 🚨"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
 	top_vbox.add_child(title_lbl)
 	
 	var sub_lbl := Label.new()
-	sub_lbl.text = "⚡ MEMPERSIAPKAN KERETA CEPAT WHOOSH & SAYAP GARUDA NUSANTARA ⚡"
+	sub_lbl.text = "🔥 KERETA CEPAT WHOOSH 350 KM/H & MAHADAHYSAT BURUNG GARUDA API 🔥"
 	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub_lbl.add_theme_font_size_override("font_size", 11)
 	sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
@@ -976,7 +987,7 @@ func setup_video_cutscene_modal() -> void:
 	bot_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	
 	var skip_btn := Button.new()
-	skip_btn.text = "⏩ LEWATI / LUNCURKAN KERETA WHOOSH SEKARANG [ESC]"
+	skip_btn.text = "⏩ LUNCURKAN WHOOSH & GARUDA SEKARANG [ESC]"
 	skip_btn.custom_minimum_size = Vector2(340, 42)
 	skip_btn.add_theme_font_size_override("font_size", 13)
 	
@@ -1018,6 +1029,19 @@ func setup_fps_and_performance_ui() -> void:
 		perf_mode_btn.pressed.connect(_on_toggle_perf_mode)
 		top_right.add_child(perf_mode_btn)
 		top_right.move_child(perf_mode_btn, 0)
+		
+	# Dedicated Top Bar Custom Model & Element Button!
+	if not top_right.has_node("CustomModelTopBtn"):
+		var custom_top_btn := Button.new()
+		custom_top_btn.name = "CustomModelTopBtn"
+		custom_top_btn.text = "🧙‍♂️ Model & Elemen 3D"
+		custom_top_btn.custom_minimum_size = Vector2(175, 36)
+		custom_top_btn.add_theme_font_size_override("font_size", 11)
+		custom_top_btn.tooltip_text = "Pilih / Import Model 3D Sendiri (.glb) & Tentukan Elemen (Mage Api, Es, Petir, dll.)"
+		style_pixel_button(custom_top_btn, true)
+		custom_top_btn.pressed.connect(open_custom_model_modal)
+		top_right.add_child(custom_top_btn)
+		top_right.move_child(custom_top_btn, 0)
 
 func update_perf_mode_btn_text(is_crowd: bool) -> void:
 	if not perf_mode_btn:
@@ -1043,6 +1067,7 @@ func play_super_ult_cutscene(team_idx: int = 0) -> void:
 		video_modal.visible = true
 		
 	if video_player and video_player.stream:
+		video_player.stop()
 		video_player.play()
 	else:
 		finish_video_cutscene()
@@ -1061,6 +1086,218 @@ func finish_video_cutscene() -> void:
 	# Spawn the colossal train crashing across the battlefield!
 	if manager and manager.has_method("spawn_super_ult_train"):
 		manager.spawn_super_ult_train(cutscene_team)
+
+func setup_custom_model_modal() -> void:
+	custom_model_modal = Control.new()
+	custom_model_modal.name = "CustomModelModal"
+	custom_model_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	custom_model_modal.visible = false
+	custom_model_modal.z_index = 95
+	add_child(custom_model_modal)
+	
+	# Dimmed backdrop
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.01, 0.01, 0.03, 0.88)
+	custom_model_modal.add_child(bg)
+	
+	# Center container
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	custom_model_modal.add_child(center)
+	
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(740, 520)
+	if sbox_parchment:
+		panel.add_theme_stylebox_override("panel", sbox_parchment)
+	center.add_child(panel)
+	
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	panel.add_child(margin)
+	
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	margin.add_child(vbox)
+	
+	# Title
+	var title_lbl := Label.new()
+	title_lbl.text = "🧙‍♂️ PUSAT MODEL 3D & ELEMEN TEMPUR"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 16)
+	title_lbl.add_theme_color_override("font_color", Color(0.85, 0.55, 0.12))
+	vbox.add_child(title_lbl)
+	
+	var sub_lbl := Label.new()
+	sub_lbl.text = "Import model 3D .glb sendiri & pilih elemen sihir (Mage Api, Es, Petir, Cahaya, Gelap, dll.)"
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", Color(0.35, 0.22, 0.14))
+	vbox.add_child(sub_lbl)
+	
+	# Import Buttons
+	var imp_box := HBoxContainer.new()
+	imp_box.add_theme_constant_override("separation", 12)
+	
+	var imp_a := Button.new()
+	imp_a.text = "📂 Import File .GLB untuk Tim A"
+	imp_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	imp_a.custom_minimum_size = Vector2(0, 36)
+	style_pixel_button(imp_a, true)
+	imp_a.pressed.connect(func(): open_custom_file_dialog("A"))
+	imp_box.add_child(imp_a)
+	
+	var imp_b := Button.new()
+	imp_b.text = "📂 Import File .GLB untuk Tim B"
+	imp_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	imp_b.custom_minimum_size = Vector2(0, 36)
+	style_pixel_button(imp_b, true)
+	imp_b.pressed.connect(func(): open_custom_file_dialog("B"))
+	imp_box.add_child(imp_b)
+	vbox.add_child(imp_box)
+	
+	var hint := Label.new()
+	hint.text = "📁 Model di folder 'custom_models/' otomatis terbaca (Jokowi, Prabowo, Bung Karno, Elon Musk, dll.)"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 9)
+	hint.add_theme_color_override("font_color", Color(0.45, 0.35, 0.25))
+	vbox.add_child(hint)
+	
+	vbox.add_child(HSeparator.new())
+	
+	# Side-by-side Columns
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 24)
+	
+	# Column Team A
+	var col_a := VBoxContainer.new()
+	col_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col_a.add_theme_constant_override("separation", 5)
+	
+	var lbl_col_a := Label.new()
+	lbl_col_a.text = "👑 KUBU A (TIM EMAS)"
+	lbl_col_a.add_theme_color_override("font_color", Color(0.75, 0.45, 0.12))
+	lbl_col_a.add_theme_font_size_override("font_size", 12)
+	col_a.add_child(lbl_col_a)
+	
+	col_a.add_child(make_modal_field_label("Pilih Model 3D:"))
+	modal_model_opt_a = OptionButton.new()
+	modal_model_opt_a.custom_minimum_size = Vector2(0, 34)
+	style_pixel_button(modal_model_opt_a, false)
+	col_a.add_child(modal_model_opt_a)
+	
+	col_a.add_child(make_modal_field_label("Pilih Elemen / Kelas Tempur:"))
+	modal_elem_opt_a = OptionButton.new()
+	modal_elem_opt_a.custom_minimum_size = Vector2(0, 34)
+	style_pixel_button(modal_elem_opt_a, false)
+	col_a.add_child(modal_elem_opt_a)
+	cols.add_child(col_a)
+	
+	# Column Team B
+	var col_b := VBoxContainer.new()
+	col_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col_b.add_theme_constant_override("separation", 5)
+	
+	var lbl_col_b := Label.new()
+	lbl_col_b.text = "🛡️ KUBU B (TIM BIRU)"
+	lbl_col_b.add_theme_color_override("font_color", Color(0.18, 0.45, 0.75))
+	lbl_col_b.add_theme_font_size_override("font_size", 12)
+	col_b.add_child(lbl_col_b)
+	
+	col_b.add_child(make_modal_field_label("Pilih Model 3D:"))
+	modal_model_opt_b = OptionButton.new()
+	modal_model_opt_b.custom_minimum_size = Vector2(0, 34)
+	style_pixel_button(modal_model_opt_b, false)
+	col_b.add_child(modal_model_opt_b)
+	
+	col_b.add_child(make_modal_field_label("Pilih Elemen / Kelas Tempur:"))
+	modal_elem_opt_b = OptionButton.new()
+	modal_elem_opt_b.custom_minimum_size = Vector2(0, 34)
+	style_pixel_button(modal_elem_opt_b, false)
+	col_b.add_child(modal_elem_opt_b)
+	cols.add_child(col_b)
+	
+	vbox.add_child(cols)
+	vbox.add_child(HSeparator.new())
+	
+	# Action buttons
+	var acts := HBoxContainer.new()
+	acts.alignment = BoxContainer.ALIGNMENT_CENTER
+	acts.add_theme_constant_override("separation", 16)
+	
+	modal_apply_btn = Button.new()
+	modal_apply_btn.text = "⚔️ TERAPKAN KE PERANG SEKARANG!"
+	modal_apply_btn.custom_minimum_size = Vector2(280, 42)
+	modal_apply_btn.add_theme_font_size_override("font_size", 12)
+	style_pixel_button(modal_apply_btn, true)
+	modal_apply_btn.pressed.connect(_on_modal_apply_pressed)
+	acts.add_child(modal_apply_btn)
+	
+	modal_close_btn = Button.new()
+	modal_close_btn.text = "✖ Tutup"
+	modal_close_btn.custom_minimum_size = Vector2(100, 42)
+	modal_close_btn.add_theme_font_size_override("font_size", 11)
+	style_pixel_button(modal_close_btn, false)
+	modal_close_btn.pressed.connect(func(): custom_model_modal.visible = false)
+	acts.add_child(modal_close_btn)
+	
+	vbox.add_child(acts)
+
+func make_modal_field_label(txt: String) -> Label:
+	var l := Label.new()
+	l.text = txt
+	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_color_override("font_color", Color(0.45, 0.35, 0.25))
+	return l
+
+func open_custom_model_modal() -> void:
+	if not custom_model_modal:
+		return
+	sync_modal_dropdowns()
+	custom_model_modal.visible = true
+
+func sync_modal_dropdowns() -> void:
+	if not modal_model_opt_a or not modal_elem_opt_a:
+		return
+	modal_model_opt_a.clear()
+	modal_elem_opt_a.clear()
+	modal_model_opt_b.clear()
+	modal_elem_opt_b.clear()
+	
+	for i in range(model_option_a.item_count):
+		var txt = model_option_a.get_item_text(i)
+		modal_model_opt_a.add_item(txt, i)
+		modal_model_opt_b.add_item(txt, i)
+	if model_option_a.selected >= 0:
+		modal_model_opt_a.select(model_option_a.selected)
+	if model_option_b.selected >= 0:
+		modal_model_opt_b.select(model_option_b.selected)
+		
+	for i in range(option_a.item_count):
+		var txt = option_a.get_item_text(i)
+		modal_elem_opt_a.add_item(txt, i)
+		modal_elem_opt_b.add_item(txt, i)
+	if option_a.selected >= 0:
+		modal_elem_opt_a.select(option_a.selected)
+	if option_b.selected >= 0:
+		modal_elem_opt_b.select(option_b.selected)
+
+func _on_modal_apply_pressed() -> void:
+	if modal_model_opt_a and modal_model_opt_a.selected >= 0:
+		model_option_a.select(modal_model_opt_a.selected)
+	if modal_elem_opt_a and modal_elem_opt_a.selected >= 0:
+		option_a.select(modal_elem_opt_a.selected)
+	if modal_model_opt_b and modal_model_opt_b.selected >= 0:
+		model_option_b.select(modal_model_opt_b.selected)
+	if modal_elem_opt_b and modal_elem_opt_b.selected >= 0:
+		option_b.select(modal_elem_opt_b.selected)
+		
+	_on_apply_army_pressed()
+	if custom_model_modal:
+		custom_model_modal.visible = false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -1147,8 +1384,8 @@ func play_super_ult_unlocked_animation() -> void:
 		super_ult_btn.add_theme_stylebox_override("pressed", sbox_capsule_red)
 		super_ult_btn.add_theme_stylebox_override("focus", sbox_capsule_red)
 	super_ult_btn.add_theme_color_override("font_color", Color(1.0, 0.98, 0.85))
-	super_ult_btn.text = "🔥 SUPER ULT WHOOSH SIAP! [3]"
-	super_ult_btn.tooltip_text = "💥 MANA SUPER 100% PENUH! Tekan [3] atau Klik untuk Meluncurkan Kereta Whoosh IKN Garuda!"
+	super_ult_btn.text = "🔥 WHOOSH & GARUDA API! [3]"
+	super_ult_btn.tooltip_text = "💥 MANA SUPER 100%! Tekan [3] untuk Meluncurkan Kereta Cepat Whoosh & Burung Garuda Api!"
 
 	# Dramatic Scale Pop & Bounce Animation
 	super_ult_btn.pivot_offset = super_ult_btn.size * 0.5
@@ -1228,6 +1465,10 @@ func _on_custom_file_selected(file_path: String) -> void:
 			_on_apply_army_pressed()
 
 func _on_preset_a_selected(idx: int) -> void:
+	if model_option_a.selected >= 0 and model_option_a.selected < model_keys.size():
+		var current_mk = model_keys[model_option_a.selected]
+		if current_mk.begins_with("custom_"):
+			return # Preserve custom model!
 	var pk = preset_keys[idx]
 	var pconf = CharacterData.PRESETS[pk]
 	var def_model = pconf.get("model_id", "soldier")
@@ -1236,6 +1477,10 @@ func _on_preset_a_selected(idx: int) -> void:
 		model_option_a.select(midx)
 
 func _on_preset_b_selected(idx: int) -> void:
+	if model_option_b.selected >= 0 and model_option_b.selected < model_keys.size():
+		var current_mk = model_keys[model_option_b.selected]
+		if current_mk.begins_with("custom_"):
+			return # Preserve custom model!
 	var pk = preset_keys[idx]
 	var pconf = CharacterData.PRESETS[pk]
 	var def_model = pconf.get("model_id", "xbot")

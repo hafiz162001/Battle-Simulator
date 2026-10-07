@@ -208,13 +208,13 @@ alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
-text = "CITY WARZ 3D (URBAN)"
+text = "VILLAGE WARZ 3D (ASRI)"
 
 [node name="Sub" type="Label" parent="UI/TopHeader/LogoPanel/HBox/Titles"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.38, 0.74, 0.98, 1)
 theme_override_font_sizes/font_size = 9
-text = "Metropolis Arena • RTX 4050"
+text = "Pedesaan Asri • RTX 4050"
 
 [node name="ScoreBox" type="PanelContainer" parent="UI/TopHeader"]
 layout_mode = 1

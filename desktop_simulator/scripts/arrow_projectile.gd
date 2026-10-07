@@ -10,13 +10,60 @@ var shooter_team: int = 0
 var is_stuck: bool = false
 var lifetime: float = 7.0
 var age: float = 0.0
+var element: String = "physical"
 
 var shaft_mesh: MeshInstance3D
 var fletch_mesh: MeshInstance3D
 var head_mesh: MeshInstance3D
+var magic_orb_mesh: MeshInstance3D
 
 func _ready() -> void:
-	build_arrow_mesh()
+	if element == "physical":
+		build_arrow_mesh()
+	else:
+		build_magic_projectile_mesh()
+
+func build_magic_projectile_mesh() -> void:
+	var col := Color("#ef4444")
+	var emit := Color("#ff6600")
+	match element:
+		"fire":
+			col = Color("#ef4444")
+			emit = Color("#ff5500")
+		"ice":
+			col = Color("#06b6d4")
+			emit = Color("#38bdf8")
+		"lightning":
+			col = Color("#a855f7")
+			emit = Color("#c084fc")
+		"holy":
+			col = Color("#fef08a")
+			emit = Color("#eab308")
+		"dark":
+			col = Color("#7c3aed")
+			emit = Color("#9333ea")
+			
+	var orb_mat := StandardMaterial3D.new()
+	orb_mat.albedo_color = col
+	orb_mat.emission_enabled = true
+	orb_mat.emission = emit
+	orb_mat.emission_energy_multiplier = 6.0
+	orb_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	
+	var orb := SphereMesh.new()
+	orb.radius = 0.22
+	orb.height = 0.44
+	magic_orb_mesh = MeshInstance3D.new()
+	magic_orb_mesh.mesh = orb
+	magic_orb_mesh.material_override = orb_mat
+	add_child(magic_orb_mesh)
+	
+	# Magic Light
+	var light := OmniLight3D.new()
+	light.light_color = emit
+	light.light_energy = 3.5
+	light.omni_range = 5.0
+	add_child(light)
 
 func build_arrow_mesh() -> void:
 	# Wooden shaft
@@ -66,17 +113,22 @@ func build_arrow_mesh() -> void:
 	fletch_mesh.position.z = 0.35
 	add_child(fletch_mesh)
 
-func launch(start_pos: Vector3, target_pos: Vector3, p_team: int, p_damage: float) -> void:
+func launch(start_pos: Vector3, target_pos: Vector3, p_team: int, p_damage: float, p_element: String = "physical") -> void:
 	global_position = start_pos
 	shooter_team = p_team
 	damage = p_damage
+	element = p_element
+	
+	if element != "physical" and magic_orb_mesh == null:
+		build_magic_projectile_mesh()
 	
 	var to_target = target_pos - start_pos
 	var dist_xz = Vector2(to_target.x, to_target.z).length()
-	var travel_time = clamp(dist_xz / 32.0, 0.4, 1.4)
+	var travel_time = clamp(dist_xz / 34.0, 0.35, 1.2)
 	
-	# Calculate parabolic arc velocity
-	var vy = (to_target.y + 0.5 * 11.0 * travel_time * travel_time) / travel_time
+	# Calculate velocity (magic flies straighter with less gravity)
+	var grav = 6.0 if element != "physical" else 11.0
+	var vy = (to_target.y + 0.5 * grav * travel_time * travel_time) / travel_time
 	var v_xz = Vector2(to_target.x, to_target.z) / travel_time
 	velocity = Vector3(v_xz.x, vy, v_xz.y)
 	
@@ -142,7 +194,41 @@ func hit_unit(target: Node) -> void:
 	set_process(false)
 	target.take_damage(damage, global_position - velocity.normalized())
 	
-	# Attach arrow to target
+	if element != "physical":
+		# Magic projectile explodes on impact!
+		var banner_text = "🔥 FIREBALL!"
+		var banner_col = Color(1.0, 0.35, 0.1)
+		match element:
+			"ice":
+				banner_text = "❄️ FROSTBITE!"
+				banner_col = Color(0.2, 0.8, 1.0)
+				if "move_speed" in target:
+					target.move_speed = max(2.0, target.move_speed * 0.75)
+			"lightning":
+				banner_text = "⚡ SHOCK!"
+				banner_col = Color(0.8, 0.4, 1.0)
+				if "velocity" in target:
+					target.velocity += -velocity.normalized() * 12.0
+			"holy":
+				banner_text = "✨ SMITE!"
+				banner_col = Color(1.0, 0.9, 0.3)
+			"dark":
+				banner_text = "🌑 VOID BURST!"
+				banner_col = Color(0.6, 0.2, 0.9)
+				
+		var dmg_label = DamageNumberClass.new()
+		get_parent().add_child(dmg_label)
+		dmg_label.global_position = target.global_position + Vector3(0, 2.2 * target.unit_scale, 0)
+		dmg_label.setup_banner(banner_text, banner_col)
+		
+		# Exploding hit sparks
+		var sparks := HitSparksClass.new()
+		get_parent().add_child(sparks)
+		sparks.trigger(global_position, true)
+		queue_free()
+		return
+		
+	# Standard physical arrow sticks into target
 	var old_pos = global_position
 	var old_rot = global_rotation
 	if get_parent():

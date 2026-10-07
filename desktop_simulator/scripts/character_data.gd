@@ -17,11 +17,96 @@ static var MODELS: Dictionary = {
 		"id": "robot_expressive",
 		"name": "🦾 Battle Droid (Punch Mocap)",
 		"file": "res://models/RobotExpressive.glb"
+	},
+	"jokowi": {
+		"id": "jokowi",
+		"name": "🇮🇩 Presiden Jokowi (Figur)",
+		"file": "res://models/jokowi.glb"
 	}
 }
 
 # Character Combat Classes
 static var PRESETS: Dictionary = {
+	"mage_fire": {
+		"id": "mage_fire",
+		"name": "🔥 Fire Mage (Penyihir Bola Api)",
+		"weapon_type": "staff_fire",
+		"element": "fire",
+		"model_id": "soldier",
+		"scale": 1.0,
+		"max_hp": 1800.0,
+		"damage": 58.0,
+		"speed": 7.5,
+		"attack_range": 30.0,
+		"attack_speed": 1.2,
+		"knockback": 4.5,
+		"is_ranged": true,
+		"color": Color("#ef4444")
+	},
+	"mage_ice": {
+		"id": "mage_ice",
+		"name": "❄️ Frost Mage (Penyihir Es Pembeku)",
+		"weapon_type": "staff_ice",
+		"element": "ice",
+		"model_id": "xbot",
+		"scale": 1.0,
+		"max_hp": 1850.0,
+		"damage": 50.0,
+		"speed": 7.6,
+		"attack_range": 30.0,
+		"attack_speed": 1.3,
+		"knockback": 3.5,
+		"is_ranged": true,
+		"color": Color("#06b6d4")
+	},
+	"mage_lightning": {
+		"id": "mage_lightning",
+		"name": "⚡ Lightning Mage (Penyihir Petir)",
+		"weapon_type": "staff_lightning",
+		"element": "lightning",
+		"model_id": "robot_expressive",
+		"scale": 1.0,
+		"max_hp": 1750.0,
+		"damage": 64.0,
+		"speed": 7.8,
+		"attack_range": 28.0,
+		"attack_speed": 1.15,
+		"knockback": 6.5,
+		"is_ranged": true,
+		"color": Color("#a855f7")
+	},
+	"mage_holy": {
+		"id": "mage_holy",
+		"name": "✨ Holy Priest (Penyihir Cahaya Suci)",
+		"weapon_type": "staff_holy",
+		"element": "holy",
+		"model_id": "soldier",
+		"scale": 1.0,
+		"max_hp": 2100.0,
+		"damage": 46.0,
+		"speed": 7.3,
+		"attack_range": 32.0,
+		"attack_speed": 1.35,
+		"knockback": 3.0,
+		"is_ranged": true,
+		"color": Color("#eab308")
+	},
+	"mage_dark": {
+		"id": "mage_dark",
+		"name": "🌑 Dark Mage (Penyihir Kegelapan)",
+		"weapon_type": "staff_dark",
+		"element": "dark",
+		"model_id": "xbot",
+		"scale": 1.0,
+		"max_hp": 1780.0,
+		"damage": 60.0,
+		"speed": 7.4,
+		"attack_range": 29.0,
+		"attack_speed": 1.25,
+		"knockback": 4.8,
+		"is_ranged": true,
+		"color": Color("#8b5cf6")
+	},
 	"archer": {
 		"id": "archer",
 		"name": "🏹 Urban Sniper (Pemanah Taktis Kota)",

@@ -23,6 +23,7 @@ var unit_scale: float = 1.0
 
 var weapon_type: String = "fists"
 var is_ranged: bool = false
+var element: String = "physical"
 
 var is_dead: bool = false
 var is_attacking: bool = false
@@ -117,6 +118,7 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 	preset_id = preset_config.get("id", "swordsman")
 	weapon_type = preset_config.get("weapon_type", "fists")
 	is_ranged = preset_config.get("is_ranged", false)
+	element = preset_config.get("element", "physical")
 	energy = 0.0 # Mana starts at 0, charges to 100% during combat!
 	
 	scale = Vector3(unit_scale, unit_scale, unit_scale)
@@ -137,9 +139,15 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 			block_chance = 0.12
 	
 	if p_model_scene:
-		model_root = p_model_scene.instantiate()
+		model_root = Node3D.new()
+		model_root.name = "ModelRoot"
 		add_child(model_root)
-		find_and_setup_animations_and_skeleton(model_root)
+		
+		var model_instance = p_model_scene.instantiate()
+		model_instance.name = "ModelInstance"
+		model_root.add_child(model_instance)
+		
+		find_and_setup_animations_and_skeleton(model_instance)
 		
 	# Attach weapon to model_root so it animates, strikes, and falls WITH the body!
 	if weapon_type != "fists":
@@ -648,6 +656,35 @@ func update_archer_combat(delta: float, dist_xz: float, dir_to_target: Vector3, 
 						weapon_rig.position = Vector3.ZERO
 						weapon_rig.rotation_degrees = Vector3.ZERO
 					play_anim(idle_anim_name if idle_anim_name != "" else run_anim_name)
+			elif weapon_type.begins_with("staff_"):
+				# Elemental Mage Spellcast!
+				var cast_duration = 0.58 / attack_speed
+				var t = clamp(strike_timer / cast_duration, 0.0, 1.0)
+				
+				# Staff thrust / raise pose
+				if weapon_rig:
+					weapon_rig.rotation_degrees.x = -sin(t * PI) * 35.0
+					weapon_rig.position.z = sin(t * PI) * 0.25 * unit_scale
+				if model_root:
+					model_root.rotation_degrees.x = -sin(t * PI) * 8.0
+					
+				# Release magic spell at 45%
+				if t >= 0.45 and not hit_dealt:
+					hit_dealt = true
+					energy = min(max_energy, energy + 20.0)
+					shoot_magic(target_unit.global_position + Vector3(0, 1.2 * target_unit.unit_scale, 0))
+					if audio_manager and audio_manager.has_method("play_ult_cast"):
+						audio_manager.play_ult_cast()
+						
+				if t >= 1.0:
+					is_striking = false
+					if weapon_rig:
+						weapon_rig.position = Vector3.ZERO
+						weapon_rig.rotation_degrees = Vector3.ZERO
+					if model_root:
+						model_root.position = Vector3.ZERO
+						model_root.rotation_degrees = Vector3.ZERO
+					play_anim(idle_anim_name if idle_anim_name != "" else run_anim_name)
 			else:
 				# Bow / Urban Sniper
 				var shoot_duration = 0.55 / attack_speed
@@ -722,7 +759,13 @@ func shoot_arrow(target_pos: Vector3) -> void:
 	var arrow = ArrowProjectileClass.new()
 	get_parent().add_child(arrow)
 	var shoot_origin = global_position + Vector3(0, 1.35 * unit_scale, 0) + global_transform.basis.z * 0.4
-	arrow.launch(shoot_origin, target_pos, team, damage)
+	arrow.launch(shoot_origin, target_pos, team, damage, "physical")
+
+func shoot_magic(target_pos: Vector3) -> void:
+	var proj = ArrowProjectileClass.new()
+	get_parent().add_child(proj)
+	var shoot_origin = global_position + Vector3(0.3 * unit_scale, 1.8 * unit_scale, 0.3 * unit_scale) + global_transform.basis.z * 0.4
+	proj.launch(shoot_origin, target_pos, team, damage, element)
 
 func update_melee_combat(delta: float, dist_xz: float, dir_to_target: Vector3, effective_range: float, separation_force: Vector3) -> void:
 	if is_instance_valid(target_unit) and not target_unit.is_dead and dist_xz <= effective_range:
@@ -931,7 +974,7 @@ func take_damage(amount: float, attacker_pos: Vector3) -> void:
 	if is_dead:
 		return
 		
-	var forward_dir = -global_transform.basis.z
+	var forward_dir = global_transform.basis.z
 	var to_attacker = (attacker_pos - global_position).normalized()
 	to_attacker.y = 0.0
 	var is_facing_attacker = forward_dir.dot(to_attacker) > 0.12 # Frontal arc
@@ -1115,6 +1158,23 @@ func update_ultimate(delta: float) -> void:
 	var t = clamp(ult_timer / ult_duration, 0.0, 1.0)
 	
 	match preset_id:
+		"mage_fire", "mage_ice", "mage_lightning", "mage_holy", "mage_dark":
+			# Ultimate Elemental Storm / Barrage!
+			var shot_interval = 0.14
+			var target_shots = int(ult_timer / shot_interval)
+			while ult_hits_dealt < target_shots and ult_hits_dealt < 6:
+				ult_hits_dealt += 1
+				var aim_target = global_position + global_transform.basis.z * 18.0
+				if is_instance_valid(target_unit) and not target_unit.is_dead:
+					aim_target = target_unit.global_position
+				var spread = Vector3((randf() - 0.5) * 6.0, 0, (randf() - 0.5) * 6.0)
+				var proj = ArrowProjectileClass.new()
+				get_parent().add_child(proj)
+				var shoot_origin = global_position + Vector3(0, 2.2 * unit_scale, 0)
+				proj.launch(shoot_origin, aim_target + spread, team, damage * 1.6, element)
+				if audio_manager and audio_manager.has_method("play_ult_cast"):
+					audio_manager.play_ult_cast()
+					
 		"archer":
 			# Rapid-fire 7 flaming arrows in a sweeping arc!
 			var shot_interval = 0.12

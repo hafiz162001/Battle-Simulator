@@ -258,17 +258,31 @@ func generate_explosion_wav() -> AudioStreamWAV:
 	wav.mix_rate = 22050
 	wav.stereo = false
 	
-	var samples_count = int(22050 * 0.85)
+	var samples_count = int(22050 * 1.35)
 	var data = PackedByteArray()
 	data.resize(samples_count * 2)
 	
+	var noise_filter: float = 0.0
 	for i in range(samples_count):
 		var t = float(i) / 22050.0
-		var env = exp(-t * 5.5)
-		var sub_bass = sin(t * (60.0 - t * 35.0) * TAU)
-		var noise = (randf() - 0.5) * 2.0 * exp(-t * 8.0)
-		var wave = sub_bass * 0.65 + noise * 0.75
-		var sample_val = int(clamp(wave * env * 30000.0, -32000.0, 32000.0))
+		
+		# 1. High-pressure supersonic shockwave crack transient (0 to 0.05s)
+		var crack = (randf() - 0.5) * 2.0 * exp(-t * 45.0)
+		
+		# 2. Chest-thumping subterranean sub-bass punch (40 - 85 Hz sweep)
+		var sub_freq = max(38.0, 85.0 * exp(-t * 6.5))
+		var sub_bass = sin(t * sub_freq * TAU) * exp(-t * 3.8)
+		
+		# 3. Low-passed rolling turbulent debris rumble
+		var raw_noise = (randf() - 0.5) * 2.0
+		noise_filter = lerp(noise_filter, raw_noise, 0.12)
+		var rumble = noise_filter * (exp(-t * 2.8) * 1.2 + exp(-t * 1.4) * 0.45)
+		
+		# Combine with punchy distortion saturation
+		var wave = crack * 0.85 + sub_bass * 0.95 + rumble * 0.75
+		wave = tanh(wave * 1.35)
+		
+		var sample_val = int(clamp(wave * 31500.0, -32000.0, 32000.0))
 		data.encode_s16(i * 2, sample_val)
 		
 	wav.data = data
