@@ -14,10 +14,18 @@ const BattleUnit = preload("res://scripts/unit.gd")
 var fps_label: Label = null
 var perf_mode_btn: Button = null
 
+enum CutsceneMode { NONE, SUPER_ULT, VICTORY }
+var current_cutscene_mode: CutsceneMode = CutsceneMode.NONE
 var video_modal: Control = null
+var video_aspect_box: AspectRatioContainer = null
 var video_player: VideoStreamPlayer = null
+var video_title_lbl: Label = null
+var video_sub_lbl: Label = null
+var video_skip_btn: Button = null
+var video_top_bar: PanelContainer = null
 var is_cutscene_playing: bool = false
 var cutscene_team: int = 0
+var pending_victory_data: Dictionary = {}
 
 
 # Top HUD
@@ -28,6 +36,15 @@ var cutscene_team: int = 0
 @onready var timer_label: Label = $TopHeader/ScoreBox/Margin/HBox/VSBox/Timer
 @onready var sound_btn: Button = $TopHeader/TopRight/SoundBtn
 @onready var toggle_sidebar_btn: Button = get_node_or_null("TopHeader/TopRight/ToggleSidebarBtn")
+
+var super_ult_b_btn: Button = null
+
+var super_ult_ready_a: bool = false
+var super_ult_ready_b: bool = false
+var super_ult_pulse_tween_a: Tween = null
+var super_ult_pulse_tween_b: Tween = null
+var super_mana_val_a: float = 0.0
+var super_mana_val_b: float = 0.0
 
 var super_ult_ready: bool = false
 var super_ult_pulse_tween: Tween = null
@@ -275,17 +292,41 @@ func connect_signals() -> void:
 		victory_close_btn.pressed.connect(func(): victory_modal.visible = false)
 		
 	if ult_a_btn:
+		ult_a_btn.custom_minimum_size = Vector2(95, 38)
 		ult_a_btn.pressed.connect(_on_trigger_ult_a)
-		ult_a_btn.pivot_offset = Vector2(55, 19)
+		ult_a_btn.pivot_offset = Vector2(47, 19)
 		apply_regular_ult_style(ult_a_btn, "A")
 	if ult_b_btn:
+		ult_b_btn.custom_minimum_size = Vector2(95, 38)
 		ult_b_btn.pressed.connect(_on_trigger_ult_b)
-		ult_b_btn.pivot_offset = Vector2(55, 19)
+		ult_b_btn.pivot_offset = Vector2(47, 19)
 		apply_regular_ult_style(ult_b_btn, "B")
-	if super_ult_btn:
-		super_ult_btn.pressed.connect(_on_trigger_super_ult)
-		super_ult_btn.pivot_offset = Vector2(105, 19)
-		apply_super_ult_charging_style(0.0)
+		
+	var ult_group = get_node_or_null("BottomBar/HBox/UltGroup")
+	if ult_group:
+		if super_ult_btn:
+			super_ult_btn.custom_minimum_size = Vector2(175, 38)
+			super_ult_btn.add_theme_font_size_override("font_size", 10)
+			super_ult_btn.pressed.connect(_on_trigger_super_ult_a)
+			super_ult_btn.pivot_offset = Vector2(87, 19)
+			apply_super_ult_charging_style_a(0.0)
+			
+		if not ult_group.has_node("SuperUltBBtn"):
+			super_ult_b_btn = Button.new()
+			super_ult_b_btn.name = "SuperUltBBtn"
+			super_ult_b_btn.custom_minimum_size = Vector2(175, 38)
+			super_ult_b_btn.add_theme_font_size_override("font_size", 10)
+			super_ult_b_btn.pivot_offset = Vector2(87, 19)
+			super_ult_b_btn.pressed.connect(_on_trigger_super_ult_b)
+			ult_group.add_child(super_ult_b_btn)
+			apply_super_ult_charging_style_b(0.0)
+		else:
+			super_ult_b_btn = ult_group.get_node("SuperUltBBtn")
+			super_ult_b_btn.custom_minimum_size = Vector2(175, 38)
+			super_ult_b_btn.add_theme_font_size_override("font_size", 10)
+			super_ult_b_btn.pivot_offset = Vector2(87, 19)
+			super_ult_b_btn.pressed.connect(_on_trigger_super_ult_b)
+			apply_super_ult_charging_style_b(0.0)
 
 func make_sbox(tex: Texture2D, margin: Vector4, pad: Vector4 = Vector4.ZERO) -> StyleBoxTexture:
 	var s := StyleBoxTexture.new()
@@ -901,6 +942,18 @@ func setup_retro_pixel_gui_theme() -> void:
 			stats_lbl.add_theme_font_size_override("font_size", 11)
 		style_pixel_button(rematch_btn, true)
 		style_pixel_button(victory_close_btn, false)
+		
+		var btn_hbox = victory_modal.find_child("BtnHBox")
+		if btn_hbox and not btn_hbox.has_node("ReplayVideoBtn"):
+			var replay_btn := Button.new()
+			replay_btn.name = "ReplayVideoBtn"
+			replay_btn.text = "🎬 Video Victory"
+			replay_btn.custom_minimum_size = Vector2(125, 36)
+			replay_btn.add_theme_font_size_override("font_size", 12)
+			style_pixel_button(replay_btn, false)
+			replay_btn.pressed.connect(_on_replay_victory_video)
+			btn_hbox.add_child(replay_btn)
+			btn_hbox.move_child(replay_btn, 0)
 
 	# 7. Top Right Controls
 	if toggle_sidebar_btn:
@@ -910,6 +963,17 @@ func setup_retro_pixel_gui_theme() -> void:
 		style_pixel_button(sound_btn, false)
 		sound_btn.text = "🔊 Suara"
 
+
+func get_video_stream(path: String) -> VideoStream:
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is VideoStream:
+			return res
+	if FileAccess.file_exists(path):
+		var theora = VideoStreamTheora.new()
+		theora.file = path
+		return theora
+	return null
 
 func setup_video_cutscene_modal() -> void:
 	video_modal = Control.new()
@@ -926,6 +990,17 @@ func setup_video_cutscene_modal() -> void:
 	bg.color = Color(0.01, 0.01, 0.02, 0.98)
 	video_modal.add_child(bg)
 	
+	# Center aspect ratio container
+	var aspect_box := AspectRatioContainer.new()
+	aspect_box.name = "VideoAspectBox"
+	aspect_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	aspect_box.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	aspect_box.alignment_horizontal = AspectRatioContainer.ALIGNMENT_CENTER
+	aspect_box.alignment_vertical = AspectRatioContainer.ALIGNMENT_CENTER
+	aspect_box.ratio = 1.0
+	video_aspect_box = aspect_box
+	video_modal.add_child(aspect_box)
+	
 	# Video Stream Player
 	video_player = VideoStreamPlayer.new()
 	video_player.name = "CutsceneVideoPlayer"
@@ -933,49 +1008,46 @@ func setup_video_cutscene_modal() -> void:
 	video_player.expand = true
 	video_player.loop = false
 	video_player.bus = "Master"
-	
-	# Load the converted Theora video
-	if ResourceLoader.exists("res://videos/super_ult.ogv"):
-		var stream = load("res://videos/super_ult.ogv")
-		if stream:
-			video_player.stream = stream
-			
 	video_player.finished.connect(finish_video_cutscene)
-	video_modal.add_child(video_player)
+	aspect_box.add_child(video_player)
 	
 	# Top Widescreen Letterbox Bar
-	var top_bar := PanelContainer.new()
-	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_bar.custom_minimum_size = Vector2(0, 75)
+	video_top_bar = PanelContainer.new()
+	video_top_bar.name = "VideoTopBar"
+	video_top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	video_top_bar.custom_minimum_size = Vector2(0, 75)
 	
 	var top_style := StyleBoxFlat.new()
 	top_style.bg_color = Color(0.03, 0.03, 0.06, 0.95)
 	top_style.border_width_bottom = 3
 	top_style.border_color = Color(0.95, 0.25, 0.25)
-	top_bar.add_theme_stylebox_override("panel", top_style)
+	video_top_bar.add_theme_stylebox_override("panel", top_style)
 	
 	var top_vbox := VBoxContainer.new()
 	top_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	
-	var title_lbl := Label.new()
-	title_lbl.text = "🚨 PROTOKOL SUPER ULTIMATE: WHOOSH & GARUDA API! 🚨"
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_size_override("font_size", 18)
-	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
-	top_vbox.add_child(title_lbl)
+	video_title_lbl = Label.new()
+	video_title_lbl.name = "VideoTitleLbl"
+	video_title_lbl.text = "🚨 PROTOKOL SUPER ULTIMATE: WHOOSH & GARUDA API! 🚨"
+	video_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	video_title_lbl.add_theme_font_size_override("font_size", 18)
+	video_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+	top_vbox.add_child(video_title_lbl)
 	
-	var sub_lbl := Label.new()
-	sub_lbl.text = "🔥 KERETA CEPAT WHOOSH 350 KM/H & MAHADAHYSAT BURUNG GARUDA API 🔥"
-	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub_lbl.add_theme_font_size_override("font_size", 11)
-	sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
-	top_vbox.add_child(sub_lbl)
+	video_sub_lbl = Label.new()
+	video_sub_lbl.name = "VideoSubLbl"
+	video_sub_lbl.text = "🔥 KERETA CEPAT WHOOSH 350 KM/H & MAHADAHYSAT BURUNG GARUDA API 🔥"
+	video_sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	video_sub_lbl.add_theme_font_size_override("font_size", 11)
+	video_sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+	top_vbox.add_child(video_sub_lbl)
 	
-	top_bar.add_child(top_vbox)
-	video_modal.add_child(top_bar)
+	video_top_bar.add_child(top_vbox)
+	video_modal.add_child(video_top_bar)
 	
 	# Bottom Widescreen Letterbox Bar
 	var bottom_bar_node := PanelContainer.new()
+	bottom_bar_node.name = "VideoBottomBar"
 	bottom_bar_node.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom_bar_node.custom_minimum_size = Vector2(0, 80)
 	
@@ -988,10 +1060,11 @@ func setup_video_cutscene_modal() -> void:
 	var bot_hbox := HBoxContainer.new()
 	bot_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	
-	var skip_btn := Button.new()
-	skip_btn.text = "⏩ LUNCURKAN WHOOSH & GARUDA SEKARANG [ESC]"
-	skip_btn.custom_minimum_size = Vector2(340, 42)
-	skip_btn.add_theme_font_size_override("font_size", 13)
+	video_skip_btn = Button.new()
+	video_skip_btn.name = "VideoSkipBtn"
+	video_skip_btn.text = "⏩ LUNCURKAN WHOOSH & GARUDA SEKARANG [ESC / SPASI]"
+	video_skip_btn.custom_minimum_size = Vector2(360, 42)
+	video_skip_btn.add_theme_font_size_override("font_size", 13)
 	
 	var skip_style := StyleBoxFlat.new()
 	skip_style.bg_color = Color(0.85, 0.15, 0.15, 0.95)
@@ -1001,11 +1074,11 @@ func setup_video_cutscene_modal() -> void:
 	skip_style.border_width_right = 2
 	skip_style.border_width_bottom = 2
 	skip_style.border_color = Color(1.0, 0.85, 0.25)
-	skip_btn.add_theme_stylebox_override("normal", skip_style)
-	skip_btn.add_theme_color_override("font_color", Color.WHITE)
-	skip_btn.pressed.connect(finish_video_cutscene)
+	video_skip_btn.add_theme_stylebox_override("normal", skip_style)
+	video_skip_btn.add_theme_color_override("font_color", Color.WHITE)
+	video_skip_btn.pressed.connect(finish_video_cutscene)
 	
-	bot_hbox.add_child(skip_btn)
+	bot_hbox.add_child(video_skip_btn)
 	bottom_bar_node.add_child(bot_hbox)
 	video_modal.add_child(bottom_bar_node)
 
@@ -1063,12 +1136,124 @@ func _on_toggle_perf_mode() -> void:
 
 func play_super_ult_cutscene(team_idx: int = 0) -> void:
 	cutscene_team = team_idx
+	current_cutscene_mode = CutsceneMode.SUPER_ULT
 	is_cutscene_playing = true
 	
+	if team_idx == 1:
+		if video_top_bar:
+			var top_style = video_top_bar.get_theme_stylebox("panel")
+			if top_style is StyleBoxFlat:
+				top_style.border_color = Color(0.2, 0.85, 0.45)
+		if video_title_lbl:
+			video_title_lbl.text = "🌊 PROTOKOL SUPER ULTIMATE KUBU B: TSUNAMI AIR & SAWIT! 🌊"
+			video_title_lbl.add_theme_color_override("font_color", Color(0.3, 0.95, 0.55))
+		if video_sub_lbl:
+			video_sub_lbl.text = "🌴 GELOMBANG AIR BAH DENGAN MINYAK SAWIT, PELEPAH & TANDAN BUAH SAWIT RAJAWAT! 🌴"
+			video_sub_lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+		if video_skip_btn:
+			video_skip_btn.text = "⏩ LUNCURKAN TSUNAMI AIR & SAWIT SEKARANG [ESC / SPASI]"
+			var skip_style = video_skip_btn.get_theme_stylebox("normal")
+			if skip_style is StyleBoxFlat:
+				skip_style.bg_color = Color(0.12, 0.48, 0.32, 0.95)
+				skip_style.border_color = Color(0.4, 0.95, 0.5)
+	else:
+		if video_top_bar:
+			var top_style = video_top_bar.get_theme_stylebox("panel")
+			if top_style is StyleBoxFlat:
+				top_style.border_color = Color(0.95, 0.25, 0.25)
+		if video_title_lbl:
+			video_title_lbl.text = "🚨 PROTOKOL SUPER ULTIMATE KUBU A: WHOOSH & GARUDA API! 🚨"
+			video_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+		if video_sub_lbl:
+			video_sub_lbl.text = "🔥 KERETA CEPAT WHOOSH 350 KM/H & MAHADAHYSAT BURUNG GARUDA API 🔥"
+			video_sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+		if video_skip_btn:
+			video_skip_btn.text = "⏩ LUNCURKAN WHOOSH & GARUDA SEKARANG [ESC / SPASI]"
+			var skip_style = video_skip_btn.get_theme_stylebox("normal")
+			if skip_style is StyleBoxFlat:
+				skip_style.bg_color = Color(0.85, 0.15, 0.15, 0.95)
+				skip_style.border_color = Color(1.0, 0.85, 0.25)
+			
 	if video_modal:
 		video_modal.visible = true
 		
-	if video_player and video_player.stream:
+	var stream: VideoStream = null
+	if team_idx == 1:
+		if video_aspect_box:
+			video_aspect_box.ratio = 16.0 / 9.0
+		stream = get_video_stream("res://videos/super_ult_kubu2.ogv")
+	else:
+		if video_aspect_box:
+			video_aspect_box.ratio = 1.0
+		stream = get_video_stream("res://videos/super_ult_kubu1.ogv")
+		
+	if not stream:
+		stream = get_video_stream("res://videos/super_ult.ogv")
+		
+	if video_player and stream:
+		video_player.stream = stream
+		video_player.stop()
+		video_player.play()
+	else:
+		finish_video_cutscene()
+
+func play_victory_cutscene(winner: String, survivors: int, time_sec: float, team_idx: int = -1) -> void:
+	current_cutscene_mode = CutsceneMode.VICTORY
+	cutscene_team = team_idx
+	pending_victory_data = {
+		"winner": winner,
+		"survivors": survivors,
+		"time_sec": time_sec,
+		"team_idx": team_idx
+	}
+	is_cutscene_playing = true
+	
+	var mins = int(time_sec / 60.0)
+	var secs = int(time_sec) % 60
+	
+	var accent_color := Color(1.0, 0.85, 0.25) # Gold
+	var btn_bg_color := Color(0.75, 0.52, 0.1, 0.95)
+	if team_idx == 1:
+		accent_color = Color(0.25, 0.85, 1.0) # Cyan/Blue for Kubu B
+		btn_bg_color = Color(0.12, 0.45, 0.85, 0.95)
+	elif team_idx == 0:
+		accent_color = Color(1.0, 0.82, 0.2) # Gold/Amber for Kubu A
+		btn_bg_color = Color(0.75, 0.52, 0.1, 0.95)
+		
+	if video_top_bar:
+		var top_style = video_top_bar.get_theme_stylebox("panel")
+		if top_style is StyleBoxFlat:
+			top_style.border_color = accent_color
+			
+	if video_title_lbl:
+		video_title_lbl.text = "🏆 KEMENANGAN MUTLAK UNTUK " + winner.to_upper() + "! 🏆"
+		video_title_lbl.add_theme_color_override("font_color", accent_color)
+		
+	if video_sub_lbl:
+		video_sub_lbl.text = "👑 SISA PASUKAN: %d HERO BERTAHAN | DURASI PERTEMPURAN: %02d:%02d 👑" % [survivors, mins, secs]
+		video_sub_lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.92))
+		
+	if video_skip_btn:
+		video_skip_btn.text = "⏩ LIHAT STATISTIK HASIL PERANG [ESC / SPASI]"
+		var skip_style = video_skip_btn.get_theme_stylebox("normal")
+		if skip_style is StyleBoxFlat:
+			skip_style.bg_color = btn_bg_color
+			skip_style.border_color = accent_color
+			
+	if video_modal:
+		video_modal.visible = true
+		
+	if video_aspect_box:
+		video_aspect_box.ratio = 1.0
+		
+	var stream: VideoStream = null
+	if team_idx == 0:
+		stream = get_video_stream("res://videos/victory_kubu1.ogv")
+	if not stream:
+		stream = get_video_stream("res://videos/victory.ogv")
+		
+	if video_player and stream:
+		video_player.stream = stream
 		video_player.stop()
 		video_player.play()
 	else:
@@ -1085,9 +1270,21 @@ func finish_video_cutscene() -> void:
 	if video_modal:
 		video_modal.visible = false
 		
-	# Spawn the colossal train crashing across the battlefield!
-	if manager and manager.has_method("spawn_super_ult_train"):
-		manager.spawn_super_ult_train(cutscene_team)
+	var mode = current_cutscene_mode
+	current_cutscene_mode = CutsceneMode.NONE
+	
+	if mode == CutsceneMode.SUPER_ULT:
+		if cutscene_team == 1:
+			if manager and manager.has_method("spawn_super_ult_tsunami"):
+				manager.spawn_super_ult_tsunami(1)
+		else:
+			if manager and manager.has_method("spawn_super_ult_train"):
+				manager.spawn_super_ult_train(0)
+	elif mode == CutsceneMode.VICTORY:
+		var win_name = pending_victory_data.get("winner", "KUBU")
+		var surv = pending_victory_data.get("survivors", 0)
+		var t_sec = pending_victory_data.get("time_sec", 0.0)
+		_display_victory_modal(win_name, surv, t_sec)
 
 func setup_custom_model_modal() -> void:
 	custom_model_modal = Control.new()
@@ -1313,30 +1510,58 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_2 or event.keycode == KEY_KP_2:
 			_on_trigger_ult_b()
 		elif event.keycode == KEY_3 or event.keycode == KEY_KP_3:
-			_on_trigger_super_ult()
+			_on_trigger_super_ult_a()
+		elif event.keycode == KEY_4 or event.keycode == KEY_KP_4:
+			_on_trigger_super_ult_b()
 
 func _on_trigger_super_ult() -> void:
+	_on_trigger_super_ult_a()
+
+func _on_trigger_super_ult_a() -> void:
 	if is_cutscene_playing:
 		return
 	if not manager or not manager.is_running:
 		if super_ult_btn:
 			play_ult_locked_shake(super_ult_btn)
 		return
-	if not super_ult_ready or super_mana_val < 100.0:
+	if not super_ult_ready_a or super_mana_val_a < 100.0:
 		if super_ult_btn:
 			play_ult_locked_shake(super_ult_btn)
 		return
 		
-	if super_ult_pulse_tween and super_ult_pulse_tween.is_valid():
-		super_ult_pulse_tween.kill()
-	super_ult_ready = false
+	if super_ult_pulse_tween_a and super_ult_pulse_tween_a.is_valid():
+		super_ult_pulse_tween_a.kill()
+	super_ult_ready_a = false
 	if super_ult_btn:
 		super_ult_btn.scale = Vector2.ONE
 	if manager:
-		manager.reset_super_mana()
-	super_mana_val = 0.0
-	apply_super_ult_charging_style(0.0)
+		manager.reset_super_mana(0)
+	super_mana_val_a = 0.0
+	apply_super_ult_charging_style_a(0.0)
 	play_super_ult_cutscene(0)
+
+func _on_trigger_super_ult_b() -> void:
+	if is_cutscene_playing:
+		return
+	if not manager or not manager.is_running:
+		if super_ult_b_btn:
+			play_ult_locked_shake(super_ult_b_btn)
+		return
+	if not super_ult_ready_b or super_mana_val_b < 100.0:
+		if super_ult_b_btn:
+			play_ult_locked_shake(super_ult_b_btn)
+		return
+		
+	if super_ult_pulse_tween_b and super_ult_pulse_tween_b.is_valid():
+		super_ult_pulse_tween_b.kill()
+	super_ult_ready_b = false
+	if super_ult_b_btn:
+		super_ult_b_btn.scale = Vector2.ONE
+	if manager:
+		manager.reset_super_mana(1)
+	super_mana_val_b = 0.0
+	apply_super_ult_charging_style_b(0.0)
+	play_super_ult_cutscene(1)
 
 func apply_regular_ult_style(btn: Button, team_key: String) -> void:
 	if not btn:
@@ -1359,6 +1584,9 @@ func apply_regular_ult_style(btn: Button, team_key: String) -> void:
 		btn.text = "⚡ ULT B [2]"
 
 func apply_super_ult_charging_style(percent: float) -> void:
+	apply_super_ult_charging_style_a(percent)
+
+func apply_super_ult_charging_style_a(percent: float) -> void:
 	if not super_ult_btn:
 		return
 	if percent >= 100.0:
@@ -1368,7 +1596,7 @@ func apply_super_ult_charging_style(percent: float) -> void:
 			super_ult_btn.add_theme_stylebox_override("pressed", sbox_capsule_red)
 			super_ult_btn.add_theme_stylebox_override("focus", sbox_capsule_red)
 		super_ult_btn.add_theme_color_override("font_color", Color(1.0, 0.98, 0.85))
-		super_ult_btn.text = "🔥 SUPER ULT WHOOSH SIAP! [3]"
+		super_ult_btn.text = "🔥 WHOOSH SIAP! [3]"
 	else:
 		if sbox_capsule_bg:
 			super_ult_btn.add_theme_stylebox_override("normal", sbox_capsule_bg)
@@ -1376,9 +1604,32 @@ func apply_super_ult_charging_style(percent: float) -> void:
 			super_ult_btn.add_theme_stylebox_override("pressed", sbox_capsule_bg)
 			super_ult_btn.add_theme_stylebox_override("focus", sbox_capsule_bg)
 		super_ult_btn.add_theme_color_override("font_color", Color(0.9, 0.65, 0.65))
-		super_ult_btn.text = "🔮 MANA SUPER: %d%% [3]" % int(percent)
+		super_ult_btn.text = "🔮 S.MANA A: %d%% [3]" % int(percent)
+
+func apply_super_ult_charging_style_b(percent: float) -> void:
+	if not super_ult_b_btn:
+		return
+	if percent >= 100.0:
+		if sbox_capsule_gold:
+			super_ult_b_btn.add_theme_stylebox_override("normal", sbox_capsule_gold)
+			super_ult_b_btn.add_theme_stylebox_override("hover", sbox_capsule_gold)
+			super_ult_b_btn.add_theme_stylebox_override("pressed", sbox_capsule_gold)
+			super_ult_b_btn.add_theme_stylebox_override("focus", sbox_capsule_gold)
+		super_ult_b_btn.add_theme_color_override("font_color", Color(0.95, 1.0, 0.9))
+		super_ult_b_btn.text = "🌊 TSUNAMI SAWIT! [4]"
+	else:
+		if sbox_capsule_bg:
+			super_ult_b_btn.add_theme_stylebox_override("normal", sbox_capsule_bg)
+			super_ult_b_btn.add_theme_stylebox_override("hover", sbox_capsule_bg)
+			super_ult_b_btn.add_theme_stylebox_override("pressed", sbox_capsule_bg)
+			super_ult_b_btn.add_theme_stylebox_override("focus", sbox_capsule_bg)
+		super_ult_b_btn.add_theme_color_override("font_color", Color(0.65, 0.85, 0.75))
+		super_ult_b_btn.text = "🌴 S.MANA B: %d%% [4]" % int(percent)
 
 func play_super_ult_unlocked_animation() -> void:
+	play_super_ult_unlocked_animation_a()
+
+func play_super_ult_unlocked_animation_a() -> void:
 	if not super_ult_btn:
 		return
 	if sbox_capsule_red:
@@ -1387,10 +1638,9 @@ func play_super_ult_unlocked_animation() -> void:
 		super_ult_btn.add_theme_stylebox_override("pressed", sbox_capsule_red)
 		super_ult_btn.add_theme_stylebox_override("focus", sbox_capsule_red)
 	super_ult_btn.add_theme_color_override("font_color", Color(1.0, 0.98, 0.85))
-	super_ult_btn.text = "🔥 WHOOSH & GARUDA API! [3]"
-	super_ult_btn.tooltip_text = "💥 MANA SUPER 100%! Tekan [3] untuk Meluncurkan Kereta Cepat Whoosh & Burung Garuda Api!"
+	super_ult_btn.text = "🔥 WHOOSH & GARUDA! [3]"
+	super_ult_btn.tooltip_text = "💥 SUPER MANA A 100%! Tekan [3] untuk Meluncurkan Kereta Cepat Whoosh & Burung Garuda Api!"
 
-	# Dramatic Scale Pop & Bounce Animation
 	super_ult_btn.pivot_offset = super_ult_btn.size * 0.5
 	super_ult_btn.scale = Vector2(0.85, 0.85)
 	var pop_tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -1400,12 +1650,40 @@ func play_super_ult_unlocked_animation() -> void:
 	if audio_mgr and audio_mgr.has_method("play_horn"):
 		audio_mgr.play_horn()
 
-	if super_ult_pulse_tween and super_ult_pulse_tween.is_valid():
-		super_ult_pulse_tween.kill()
+	if super_ult_pulse_tween_a and super_ult_pulse_tween_a.is_valid():
+		super_ult_pulse_tween_a.kill()
 	var pulse_tw = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	pulse_tw.tween_property(super_ult_btn, "scale", Vector2(1.06, 1.06), 0.45)
 	pulse_tw.tween_property(super_ult_btn, "scale", Vector2(1.0, 1.0), 0.45)
-	super_ult_pulse_tween = pulse_tw
+	super_ult_pulse_tween_a = pulse_tw
+
+func play_super_ult_unlocked_animation_b() -> void:
+	if not super_ult_b_btn:
+		return
+	if sbox_capsule_gold:
+		super_ult_b_btn.add_theme_stylebox_override("normal", sbox_capsule_gold)
+		super_ult_b_btn.add_theme_stylebox_override("hover", sbox_capsule_gold)
+		super_ult_b_btn.add_theme_stylebox_override("pressed", sbox_capsule_gold)
+		super_ult_b_btn.add_theme_stylebox_override("focus", sbox_capsule_gold)
+	super_ult_b_btn.add_theme_color_override("font_color", Color(0.95, 1.0, 0.9))
+	super_ult_b_btn.text = "🌊 TSUNAMI SAWIT! [4]"
+	super_ult_b_btn.tooltip_text = "🌴 SUPER MANA B 100%! Tekan [4] untuk Memanggil Tsunami Air Campur Sawit & Pelepah!"
+
+	super_ult_b_btn.pivot_offset = super_ult_b_btn.size * 0.5
+	super_ult_b_btn.scale = Vector2(0.85, 0.85)
+	var pop_tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop_tw.tween_property(super_ult_b_btn, "scale", Vector2(1.2, 1.2), 0.18)
+	pop_tw.tween_property(super_ult_b_btn, "scale", Vector2(1.0, 1.0), 0.14)
+	
+	if audio_mgr and audio_mgr.has_method("play_horn"):
+		audio_mgr.play_horn()
+
+	if super_ult_pulse_tween_b and super_ult_pulse_tween_b.is_valid():
+		super_ult_pulse_tween_b.kill()
+	var pulse_tw = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse_tw.tween_property(super_ult_b_btn, "scale", Vector2(1.06, 1.06), 0.45)
+	pulse_tw.tween_property(super_ult_b_btn, "scale", Vector2(1.0, 1.0), 0.45)
+	super_ult_pulse_tween_b = pulse_tw
 
 func play_ult_locked_shake(btn: Button) -> void:
 	if not btn:
@@ -1677,13 +1955,29 @@ func _on_pause_pressed() -> void:
 		pause_btn.text = "▶️" if not is_running else "⏸️"
 
 func _on_reset_pressed() -> void:
+	if is_cutscene_playing:
+		is_cutscene_playing = false
+		if video_player:
+			video_player.stop()
+		if video_modal:
+			video_modal.visible = false
+		current_cutscene_mode = CutsceneMode.NONE
 	victory_modal.visible = false
+	super_ult_ready_a = false
+	super_ult_ready_b = false
 	super_ult_ready = false
+	if super_ult_pulse_tween_a and super_ult_pulse_tween_a.is_valid():
+		super_ult_pulse_tween_a.kill()
+	if super_ult_pulse_tween_b and super_ult_pulse_tween_b.is_valid():
+		super_ult_pulse_tween_b.kill()
 	if super_ult_pulse_tween and super_ult_pulse_tween.is_valid():
 		super_ult_pulse_tween.kill()
 	if super_ult_btn:
 		super_ult_btn.scale = Vector2.ONE
-		apply_super_ult_charging_style(0.0)
+		apply_super_ult_charging_style_a(0.0)
+	if super_ult_b_btn:
+		super_ult_b_btn.scale = Vector2.ONE
+		apply_super_ult_charging_style_b(0.0)
 	if ult_a_btn:
 		ult_a_btn.scale = Vector2.ONE
 		apply_regular_ult_style(ult_a_btn, "A")
@@ -1701,24 +1995,53 @@ func set_speed(speed: float, _active_btn: Button) -> void:
 	if tempo_counter_label:
 		tempo_counter_label.text = "TEMPO: %.1fx" % speed
 
-func show_victory(winner: String, survivors: int, time_sec: float) -> void:
+func show_victory(winner: String, survivors: int, time_sec: float, team_idx: int = -1) -> void:
+	pending_victory_data = {
+		"winner": winner,
+		"survivors": survivors,
+		"time_sec": time_sec,
+		"team_idx": team_idx
+	}
+	
+	# If one team won (not a draw) and victory video stream is available, play victory video cutscene!
+	var stream = get_video_stream("res://videos/victory.ogv")
+	if team_idx >= 0 and stream:
+		play_victory_cutscene(winner, survivors, time_sec, team_idx)
+	else:
+		_display_victory_modal(winner, survivors, time_sec)
+
+func _display_victory_modal(winner: String, survivors: int, time_sec: float) -> void:
+	if not victory_modal:
+		return
 	victory_modal.visible = true
-	winner_lbl.text = "🏆 " + winner + " MENANG!"
+	if winner_lbl:
+		winner_lbl.text = "🏆 " + winner + " MENANG!"
 	var mins = int(time_sec / 60.0)
 	var secs = int(time_sec) % 60
-	stats_lbl.text = "Sisa Pasukan: %d | Durasi Perang: %02d:%02d" % [survivors, mins, secs]
-	start_btn.text = "🏆 " + winner + " MENANG! (Klik Tanding Ulang)"
+	if stats_lbl:
+		stats_lbl.text = "Sisa Pasukan: %d | Durasi Perang: %02d:%02d" % [survivors, mins, secs]
+	if start_btn:
+		start_btn.text = "🏆 " + winner + " MENANG! (Klik Tanding Ulang)"
 	
 	# Smooth subtle entrance
 	victory_modal.modulate.a = 0.0
 	var tw = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(victory_modal, "modulate:a", 1.0, 0.25)
 
+func _on_replay_victory_video() -> void:
+	if victory_modal:
+		victory_modal.visible = false
+	var win_name = pending_victory_data.get("winner", "KUBU")
+	var surv = pending_victory_data.get("survivors", 0)
+	var t_sec = pending_victory_data.get("time_sec", 0.0)
+	var t_idx = pending_victory_data.get("team_idx", -1)
+	play_victory_cutscene(win_name, surv, t_sec, t_idx)
+
 func _on_rematch_pressed() -> void:
 	victory_modal.visible = false
 	_on_reset_pressed()
 
-func update_stats(alive_a: int, total_a: int, alive_b: int, total_b: int, time_sec: float, running: bool, super_mana: float = 0.0) -> void:
+func update_stats(alive_a: int, total_a: int, alive_b: int, total_b: int, time_sec: float, running: bool, super_mana_a: float = 0.0, super_mana_b: float = 0.0) -> void:
 	if count_a_label:
 		count_a_label.text = "%d / %d" % [alive_a, total_a]
 	if count_b_label:
@@ -1751,19 +2074,37 @@ func update_stats(alive_a: int, total_a: int, alive_b: int, total_b: int, time_s
 		var secs = int(time_sec) % 60
 		timer_label.text = "%02d:%02d" % [mins, secs]
 		
-	super_mana_val = super_mana
+	super_mana_val_a = super_mana_a
+	super_mana_val_b = super_mana_b
+	super_mana_val = max(super_mana_a, super_mana_b)
+
+	# Super Ult A (Kubu A - Whoosh & Garuda)
 	if super_ult_btn:
-		if super_mana >= 100.0:
-			if not super_ult_ready:
-				super_ult_ready = true
-				play_super_ult_unlocked_animation()
+		if super_mana_a >= 100.0:
+			if not super_ult_ready_a:
+				super_ult_ready_a = true
+				play_super_ult_unlocked_animation_a()
 		else:
-			if super_ult_ready:
-				if super_ult_pulse_tween and super_ult_pulse_tween.is_valid():
-					super_ult_pulse_tween.kill()
+			if super_ult_ready_a:
+				if super_ult_pulse_tween_a and super_ult_pulse_tween_a.is_valid():
+					super_ult_pulse_tween_a.kill()
 				super_ult_btn.scale = Vector2.ONE
-				super_ult_ready = false
-			apply_super_ult_charging_style(super_mana)
+				super_ult_ready_a = false
+			apply_super_ult_charging_style_a(super_mana_a)
+
+	# Super Ult B (Kubu B - Tsunami Air & Sawit)
+	if super_ult_b_btn:
+		if super_mana_b >= 100.0:
+			if not super_ult_ready_b:
+				super_ult_ready_b = true
+				play_super_ult_unlocked_animation_b()
+		else:
+			if super_ult_ready_b:
+				if super_ult_pulse_tween_b and super_ult_pulse_tween_b.is_valid():
+					super_ult_pulse_tween_b.kill()
+				super_ult_b_btn.scale = Vector2.ONE
+				super_ult_ready_b = false
+			apply_super_ult_charging_style_b(super_mana_b)
 		
 	if not running and start_btn and not victory_modal.visible:
 		if alive_a == 0 or alive_b == 0:

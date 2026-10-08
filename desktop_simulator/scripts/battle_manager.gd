@@ -3,6 +3,7 @@ extends Node3D
 const BattleUnit = preload("res://scripts/unit.gd")
 const CharacterData = preload("res://scripts/character_data.gd")
 const SuperUltWhooshGarudaClass = preload("res://scripts/super_ult_whoosh_garuda.gd")
+const SuperUltTsunamiSawitClass = preload("res://scripts/super_ult_tsunami_sawit.gd")
 
 @onready var arena: Node3D = $"../DesertArena"
 @onready var camera: Camera3D = $"../Camera3D"
@@ -16,6 +17,8 @@ var units: Array = []
 var is_running: bool = false
 var battle_time: float = 0.0
 var super_mana: float = 0.0
+var super_mana_a: float = 0.0
+var super_mana_b: float = 0.0
 
 var count_a: int = 60
 var count_b: int = 60
@@ -112,6 +115,8 @@ func setup_battle() -> void:
 	battle_finished = false
 	battle_time = 0.0
 	super_mana = 0.0
+	super_mana_a = 0.0
+	super_mana_b = 0.0
 	Engine.time_scale = 1.0
 	
 	team_a_alive = count_a
@@ -137,7 +142,7 @@ func setup_battle() -> void:
 
 func update_hud() -> void:
 	if ui and ui.has_method("update_stats"):
-		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, 0.0)
+		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, super_mana_a, super_mana_b)
 
 func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, config: Dictionary, start_x: float, forward_dir: float) -> void:
 	var max_cols: int = 24 if count > 200 else (16 if count > 80 else 10)
@@ -178,8 +183,10 @@ func clear_battle() -> void:
 func _process(delta: float) -> void:
 	if is_running:
 		battle_time += delta
-		# Super Mana fills up quickly (~8-10 seconds of combat to 100%)
-		super_mana = clamp(super_mana + delta * 8.5, 0.0, 100.0)
+		# Super Mana for both factions fills up steadily (~8-10s of combat to 100%)
+		super_mana_a = clamp(super_mana_a + delta * 9.0, 0.0, 100.0)
+		super_mana_b = clamp(super_mana_b + delta * 9.0, 0.0, 100.0)
+		super_mana = super_mana_a
 		
 	alive_units_a.clear()
 	alive_units_b.clear()
@@ -280,28 +287,34 @@ func _process(delta: float) -> void:
 	var avg_energy_a = (energy_sum_a / float(team_a_alive)) if team_a_alive > 0 else 0.0
 	var avg_energy_b = (energy_sum_b / float(team_b_alive)) if team_b_alive > 0 else 0.0
 	if ui and ui.has_method("update_stats"):
-		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, super_mana)
+		ui.update_stats(team_a_alive, count_a, team_b_alive, count_b, battle_time, is_running, super_mana_a, super_mana_b)
 		
 	# Check battle conclusion
 	if is_running and not battle_finished:
 		if team_a_alive == 0 or team_b_alive == 0:
 			is_running = false
 			battle_finished = true
-			if audio_mgr:
-				audio_mgr.play_victory()
+			var winner_name := ""
+			var survivors := 0
+			var winning_team := -1
+			if team_a_alive > 0 and team_b_alive == 0:
+				winner_name = "KUBU A (" + CharacterData.get_preset(preset_a).get("name") + ")"
+				survivors = team_a_alive
+				winning_team = 0
+			elif team_b_alive > 0 and team_a_alive == 0:
+				winner_name = "KUBU B (" + CharacterData.get_preset(preset_b).get("name") + ")"
+				survivors = team_b_alive
+				winning_team = 1
+			else:
+				winner_name = "SERI (SEMUA PASUKAN GUGUR BERSAMA)"
+				survivors = 0
+				winning_team = -1
+				
 			if ui and ui.has_method("show_victory"):
-				var winner_name := ""
-				var survivors := 0
-				if team_a_alive > 0 and team_b_alive == 0:
-					winner_name = "KUBU A (" + CharacterData.get_preset(preset_a).get("name") + ")"
-					survivors = team_a_alive
-				elif team_b_alive > 0 and team_a_alive == 0:
-					winner_name = "KUBU B (" + CharacterData.get_preset(preset_b).get("name") + ")"
-					survivors = team_b_alive
-				else:
-					winner_name = "SERI (SEMUA PASUKAN GUGUR BERSAMA)"
-					survivors = 0
-				ui.show_victory(winner_name, survivors, battle_time)
+				ui.show_victory(winner_name, survivors, battle_time, winning_team)
+			else:
+				if audio_mgr:
+					audio_mgr.play_victory()
 
 func find_nearest_target(unit: BattleUnit, enemy_grid: Dictionary, enemy_list: Array) -> BattleUnit:
 	var u_pos = unit.global_position
@@ -386,11 +399,15 @@ func toggle_pause() -> bool:
 func set_speed(speed: float) -> void:
 	Engine.time_scale = speed
 
-func reset_super_mana() -> void:
-	super_mana = 0.0
-
-func add_super_mana(amount: float) -> void:
-	super_mana = clamp(super_mana + amount, 0.0, 100.0)
+func add_super_mana(amount: float, p_team: int = -1) -> void:
+	if p_team == 0:
+		super_mana_a = clamp(super_mana_a + amount, 0.0, 100.0)
+	elif p_team == 1:
+		super_mana_b = clamp(super_mana_b + amount, 0.0, 100.0)
+	else:
+		super_mana_a = clamp(super_mana_a + amount, 0.0, 100.0)
+		super_mana_b = clamp(super_mana_b + amount, 0.0, 100.0)
+	super_mana = super_mana_a
 
 func trigger_team_ultimate(p_team: BattleUnit.Team) -> bool:
 	var list = alive_units_a if p_team == BattleUnit.Team.A else alive_units_b
@@ -411,13 +428,31 @@ func get_team_energy_percent(p_team: BattleUnit.Team) -> float:
 			total += u.energy
 	return clamp(total / float(list.size()), 0.0, 100.0)
 
+func reset_super_mana(p_team: int = -1) -> void:
+	if p_team == 0:
+		super_mana_a = 0.0
+	elif p_team == 1:
+		super_mana_b = 0.0
+	else:
+		super_mana_a = 0.0
+		super_mana_b = 0.0
+	super_mana = super_mana_a
+
 func spawn_super_ult_train(p_team: int = 0) -> void:
 	var train := SuperUltWhooshGarudaClass.new()
 	add_child(train)
 	train.launch(p_team, camera, audio_mgr, arena)
 
+func spawn_super_ult_tsunami(p_team: int = 1) -> void:
+	var tsunami := SuperUltTsunamiSawitClass.new()
+	add_child(tsunami)
+	tsunami.launch(p_team, camera, audio_mgr, arena)
+
 func trigger_super_ultimate(p_team: int = 0) -> void:
 	if ui and ui.has_method("play_super_ult_cutscene"):
 		ui.play_super_ult_cutscene(p_team)
 	else:
-		spawn_super_ult_train(p_team)
+		if p_team == 1:
+			spawn_super_ult_tsunami(1)
+		else:
+			spawn_super_ult_train(0)

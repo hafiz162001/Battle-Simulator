@@ -771,13 +771,22 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 text = "⚡ ULT B [2]"
 
 [node name="SuperUltBtn" type="Button" parent="UI/BottomBar/HBox/UltGroup"]
-custom_minimum_size = Vector2(210, 38)
+custom_minimum_size = Vector2(175, 38)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
-text = "🔮 MANA SUPER: 0% [3]"
+text = "🔮 S.MANA A: 0% [3]"
+
+[node name="SuperUltBBtn" type="Button" parent="UI/BottomBar/HBox/UltGroup"]
+custom_minimum_size = Vector2(175, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🌴 S.MANA B: 0% [4]"
 
 [node name="VictoryModal" type="Control" parent="UI"]
 visible = false
