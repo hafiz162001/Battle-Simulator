@@ -51,28 +51,49 @@ func load_builtin_models() -> void:
 		loaded_models["jokowi"] = load("res://models/jokowi.glb")
 
 func scan_custom_models() -> void:
-	var dir_path = "res://../custom_models"
-	var dir = DirAccess.open(dir_path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if not dir.current_is_dir() and (file_name.ends_with(".glb") or file_name.ends_with(".gltf")):
-				var full_path = ProjectSettings.globalize_path(dir_path) + "/" + file_name
-				load_custom_model_from_file(full_path, file_name)
-			file_name = dir.get_next()
+	var candidate_dirs: Array[String] = [
+		ProjectSettings.globalize_path("res://").path_join("../custom_models").simplify_path(),
+		ProjectSettings.globalize_path("res://custom_models").simplify_path(),
+		OS.get_executable_path().get_base_dir().path_join("../custom_models").simplify_path(),
+		OS.get_executable_path().get_base_dir().path_join("custom_models").simplify_path(),
+		"custom_models"
+	]
+	var found_dir: String = ""
+	for cpath in candidate_dirs:
+		if DirAccess.dir_exists_absolute(cpath):
+			found_dir = cpath
+			break
+			
+	if found_dir != "":
+		var dir = DirAccess.open(found_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			while file_name != "":
+				if not dir.current_is_dir() and (file_name.ends_with(".glb") or file_name.ends_with(".gltf")):
+					var full_path = found_dir.path_join(file_name)
+					load_custom_model_from_file(full_path, file_name)
+				file_name = dir.get_next()
+
+func set_owner_recursive(node: Node, new_owner: Node) -> void:
+	for child in node.get_children():
+		child.owner = new_owner
+		set_owner_recursive(child, new_owner)
 
 func load_custom_model_from_file(file_path: String, model_name: String) -> String:
+	file_path = file_path.replace("\\", "/")
 	var doc = GLTFDocument.new()
 	var state = GLTFState.new()
 	var err = doc.append_from_file(file_path, state)
 	if err == OK:
 		var scene = doc.generate_scene(state)
+		set_owner_recursive(scene, scene)
 		var packed = PackedScene.new()
 		packed.pack(scene)
-		var custom_id = "custom_" + model_name.get_basename()
+		var base_name = model_name.get_basename().replace(" ", "_")
+		var custom_id = "custom_" + base_name
 		loaded_models[custom_id] = packed
-		custom_models[custom_id] = "📁 " + model_name
+		custom_models[custom_id] = "📁 " + model_name.get_basename()
 		return custom_id
 	return ""
 

@@ -147,12 +147,60 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 		model_instance.name = "ModelInstance"
 		model_root.add_child(model_instance)
 		
+		normalize_model(model_instance)
 		find_and_setup_animations_and_skeleton(model_instance)
 		
 	# Attach weapon to model_root so it animates, strikes, and falls WITH the body!
 	if weapon_type != "fists":
 		var attach_parent = model_root if model_root else self
 		weapon_rig = WeaponBuilderClass.attach_weapon(attach_parent, weapon_type, team, 1.0)
+
+func normalize_model(model_inst: Node3D) -> void:
+	if not model_inst:
+		return
+	var aabb = calculate_combined_mesh_aabb(model_inst)
+	if aabb.size == Vector3.ZERO:
+		return
+	
+	# If model has Z-up from Blender / Sketchfab (e.g. flat on ground)
+	if aabb.size.z > aabb.size.y * 1.5 and aabb.size.y < 1.0:
+		model_inst.rotation_degrees.x = -90.0
+		aabb = calculate_combined_mesh_aabb(model_inst)
+		
+	# Rotate model 180 degrees around Y so imported humanoid models face +Z (project forward axis)
+	model_inst.rotation_degrees.y = 180.0
+		
+	var current_height = aabb.size.y
+	# If height is non-standard (<1.3m or >2.8m), scale to 1.85m standard humanoid height
+	if current_height > 0.05 and (current_height < 1.3 or current_height > 2.8):
+		var target_height = 1.85
+		var s = target_height / current_height
+		model_inst.scale = Vector3(s, s, s)
+		aabb = calculate_combined_mesh_aabb(model_inst)
+		
+	# Adjust ground offset so bottom of the model touches y = 0
+	if abs(aabb.position.y) > 0.08:
+		model_inst.position.y = -aabb.position.y
+
+func calculate_combined_mesh_aabb(root_node: Node3D) -> AABB:
+	var total_aabb := AABB()
+	var has_first := false
+	var stack = [root_node]
+	while stack.size() > 0:
+		var curr = stack.pop_back()
+		if curr is MeshInstance3D and curr.mesh and curr.mesh.get_surface_count() > 0:
+			var mesh_aabb = curr.mesh.get_aabb()
+			var xform = root_node.global_transform.affine_inverse() * curr.global_transform if curr.is_inside_tree() else Transform3D()
+			var transformed_aabb = xform * mesh_aabb
+			if not has_first:
+				total_aabb = transformed_aabb
+				has_first = true
+			else:
+				total_aabb = total_aabb.merge(transformed_aabb)
+		for ch in curr.get_children():
+			if ch is Node3D:
+				stack.push_back(ch)
+	return total_aabb
 
 func find_and_setup_animations_and_skeleton(node: Node) -> void:
 	find_nodes_recursive(node)

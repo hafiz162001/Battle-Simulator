@@ -239,6 +239,8 @@ func connect_signals() -> void:
 	
 	option_a.item_selected.connect(_on_preset_a_selected)
 	option_b.item_selected.connect(_on_preset_b_selected)
+	model_option_a.item_selected.connect(func(_idx): _on_model_changed_live())
+	model_option_b.item_selected.connect(func(_idx): _on_model_changed_live())
 	
 	load_custom_a_btn.pressed.connect(func(): open_custom_file_dialog("A"))
 	load_custom_b_btn.pressed.connect(func(): open_custom_file_dialog("B"))
@@ -1296,6 +1298,7 @@ func _on_modal_apply_pressed() -> void:
 		option_b.select(modal_elem_opt_b.selected)
 		
 	_on_apply_army_pressed()
+	show_toast_notification("⚔️ Model & Elemen Pasukan Berhasil Diterapkan ke Medan Perang!")
 	if custom_model_modal:
 		custom_model_modal.visible = false
 
@@ -1443,7 +1446,75 @@ func _on_trigger_ult_b() -> void:
 
 func open_custom_file_dialog(team_side: String) -> void:
 	importing_team = team_side
+	var candidate_dirs: Array[String] = [
+		ProjectSettings.globalize_path("res://").path_join("../custom_models").simplify_path(),
+		ProjectSettings.globalize_path("res://custom_models").simplify_path()
+	]
+	for cdir in candidate_dirs:
+		if DirAccess.dir_exists_absolute(cdir):
+			custom_model_dialog.current_dir = cdir
+			break
 	custom_model_dialog.popup_centered()
+
+var toast_panel: PanelContainer = null
+var toast_label: Label = null
+var toast_tween: Tween = null
+
+func show_toast_notification(msg: String) -> void:
+	if not toast_panel:
+		toast_panel = PanelContainer.new()
+		toast_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		toast_panel.position = Vector2(500, 75)
+		toast_panel.custom_minimum_size = Vector2(440, 44)
+		toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color = Color(0.08, 0.12, 0.18, 0.95)
+		sbox.border_color = Color(0.95, 0.65, 0.15, 0.9)
+		sbox.set_border_width_all(2)
+		sbox.set_corner_radius_all(10)
+		sbox.content_margin_left = 16
+		sbox.content_margin_right = 16
+		sbox.content_margin_top = 8
+		sbox.content_margin_bottom = 8
+		toast_panel.add_theme_stylebox_override("panel", sbox)
+		
+		toast_label = Label.new()
+		toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		toast_label.add_theme_font_size_override("font_size", 12)
+		toast_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.85))
+		toast_panel.add_child(toast_label)
+		add_child(toast_panel)
+	
+	toast_label.text = msg
+	toast_panel.modulate.a = 1.0
+	toast_panel.visible = true
+	
+	if toast_tween and toast_tween.is_valid():
+		toast_tween.kill()
+	toast_tween = create_tween()
+	toast_tween.tween_interval(2.8)
+	toast_tween.tween_property(toast_panel, "modulate:a", 0.0, 0.5)
+	toast_tween.tween_callback(func(): toast_panel.visible = false)
+
+func _on_model_changed_live() -> void:
+	if option_a.selected < 0 or model_option_a.selected < 0 or option_b.selected < 0 or model_option_b.selected < 0:
+		return
+	if model_option_a.selected >= model_keys.size() or model_option_b.selected >= model_keys.size():
+		return
+	var key_a = preset_keys[option_a.selected]
+	var model_a = model_keys[model_option_a.selected]
+	var count_a = int(slider_a.value)
+	
+	var key_b = preset_keys[option_b.selected]
+	var model_b = model_keys[model_option_b.selected]
+	var count_b = int(slider_b.value)
+	
+	update_header_names()
+	if manager:
+		manager.set_army_config(count_a, key_a, model_a, count_b, key_b, model_b)
+		start_btn.text = "⚔️ MULAI PERANG!"
 
 func _on_custom_file_selected(file_path: String) -> void:
 	var fname = file_path.get_file()
@@ -1452,9 +1523,9 @@ func _on_custom_file_selected(file_path: String) -> void:
 		if custom_id != "":
 			if not model_keys.has(custom_id):
 				model_keys.append(custom_id)
-				var label_text = "📁 " + fname
-				model_option_a.add_item(label_text, model_keys.size() - 1)
-				model_option_b.add_item(label_text, model_keys.size() - 1)
+				var label_text = "📁 " + fname.get_basename()
+				model_option_a.add_item(label_text)
+				model_option_b.add_item(label_text)
 				
 			var target_idx = model_keys.find(custom_id)
 			if importing_team == "A":
@@ -1462,31 +1533,37 @@ func _on_custom_file_selected(file_path: String) -> void:
 			else:
 				model_option_b.select(target_idx)
 				
-			_on_apply_army_pressed()
+			sync_modal_dropdowns()
+			_on_model_changed_live()
+			show_toast_notification("✅ Model 3D '" + fname.get_basename() + "' Berhasil Dipasang untuk Tim " + importing_team + "!")
+		else:
+			show_toast_notification("❌ Gagal memuat file 3D! Pastikan format file .glb atau .gltf valid.")
 
 func _on_preset_a_selected(idx: int) -> void:
+	# If current model is still default 'soldier', adapt to preset default model; otherwise keep user selection!
 	if model_option_a.selected >= 0 and model_option_a.selected < model_keys.size():
 		var current_mk = model_keys[model_option_a.selected]
-		if current_mk.begins_with("custom_"):
-			return # Preserve custom model!
-	var pk = preset_keys[idx]
-	var pconf = CharacterData.PRESETS[pk]
-	var def_model = pconf.get("model_id", "soldier")
-	var midx = model_keys.find(def_model)
-	if midx >= 0:
-		model_option_a.select(midx)
+		if current_mk == "soldier":
+			var pk = preset_keys[idx]
+			var pconf = CharacterData.PRESETS[pk]
+			var def_model = pconf.get("model_id", "soldier")
+			var midx = model_keys.find(def_model)
+			if midx >= 0:
+				model_option_a.select(midx)
+	_on_model_changed_live()
 
 func _on_preset_b_selected(idx: int) -> void:
+	# If current model is still default 'xbot' or 'soldier', adapt to preset default model; otherwise keep user selection!
 	if model_option_b.selected >= 0 and model_option_b.selected < model_keys.size():
 		var current_mk = model_keys[model_option_b.selected]
-		if current_mk.begins_with("custom_"):
-			return # Preserve custom model!
-	var pk = preset_keys[idx]
-	var pconf = CharacterData.PRESETS[pk]
-	var def_model = pconf.get("model_id", "xbot")
-	var midx = model_keys.find(def_model)
-	if midx >= 0:
-		model_option_b.select(midx)
+		if current_mk == "xbot" or current_mk == "soldier":
+			var pk = preset_keys[idx]
+			var pconf = CharacterData.PRESETS[pk]
+			var def_model = pconf.get("model_id", "xbot")
+			var midx = model_keys.find(def_model)
+			if midx >= 0:
+				model_option_b.select(midx)
+	_on_model_changed_live()
 
 func set_slider_a(val: int) -> void:
 	slider_a.value = val
