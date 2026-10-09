@@ -147,7 +147,7 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 		model_instance.name = "ModelInstance"
 		model_root.add_child(model_instance)
 		
-		normalize_model(model_instance)
+		normalize_model(model_instance, p_model_scene)
 		find_and_setup_animations_and_skeleton(model_instance)
 		
 	# Attach weapon to model_root so it animates, strikes, and falls WITH the body!
@@ -155,7 +155,34 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 		var attach_parent = model_root if model_root else self
 		weapon_rig = WeaponBuilderClass.attach_weapon(attach_parent, weapon_type, team, 1.0)
 
-func normalize_model(model_inst: Node3D) -> void:
+func detect_model_natural_forward_z(model_inst: Node3D, model_scene: PackedScene = null) -> float:
+	if not model_inst:
+		return -1.0
+	if model_scene and "xbot" in model_scene.resource_path.to_lower():
+		return 1.0
+	if "xbot" in model_inst.name.to_lower():
+		return 1.0
+	var skel: Skeleton3D = model_inst.find_child("Skeleton3D", true, false)
+	if skel:
+		var hips_idx := -1
+		var toe_idx := -1
+		for i in range(skel.get_bone_count()):
+			var n = skel.get_bone_name(i).to_lower()
+			if hips_idx == -1 and ("hips" in n or "pelvis" in n or "root" in n):
+				hips_idx = i
+			if toe_idx == -1 and ("toe" in n or "foot" in n):
+				toe_idx = i
+		if hips_idx != -1 and toe_idx != -1:
+			var anim_p: AnimationPlayer = model_inst.find_child("AnimationPlayer", true, false)
+			if anim_p and anim_p.get_animation_list().size() > 0:
+				anim_p.play(anim_p.get_animation_list()[0])
+				anim_p.advance(0.05)
+				var h_p = skel.get_bone_global_pose(hips_idx).origin
+				var t_p = skel.get_bone_global_pose(toe_idx).origin
+				return t_p.z - h_p.z
+	return -1.0
+
+func normalize_model(model_inst: Node3D, model_scene: PackedScene = null) -> void:
 	if not model_inst:
 		return
 	var aabb = calculate_combined_mesh_aabb(model_inst)
@@ -167,8 +194,12 @@ func normalize_model(model_inst: Node3D) -> void:
 		model_inst.rotation_degrees.x = -90.0
 		aabb = calculate_combined_mesh_aabb(model_inst)
 		
-	# Rotate model 180 degrees around Y so imported humanoid models face +Z (project forward axis)
-	model_inst.rotation_degrees.y = 180.0
+	# Normalize orientation: models must face +Z (project standard forward axis)
+	var natural_fwd_z = detect_model_natural_forward_z(model_inst, model_scene)
+	if natural_fwd_z > 0.0:
+		model_inst.rotation_degrees.y = 0.0 # Already facing +Z (e.g. Xbot, Mixamo +Z models)
+	else:
+		model_inst.rotation_degrees.y = 180.0 # Facing -Z, rotate 180 to face +Z (e.g. Soldier, RobotExpressive)
 		
 	var current_height = aabb.size.y
 	# If height is non-standard (<1.3m or >2.8m), scale to 1.85m standard humanoid height
@@ -596,6 +627,13 @@ func update_unit(delta: float, is_battle_running: bool, nearest_enemy: BattleUni
 			weapon_rig.rotation_degrees = weapon_rig.rotation_degrees.lerp(Vector3.ZERO, delta * 14.0)
 		
 	if not is_battle_running:
+		# Maintain formation facing towards enemy army before battle starts
+		var target_pos := forward_target
+		var dir_to_target = (target_pos - global_position)
+		dir_to_target.y = 0.0
+		if dir_to_target.length_squared() > 0.1:
+			var target_yaw = atan2(dir_to_target.x, dir_to_target.z)
+			rotation.y = lerp_angle(rotation.y, target_yaw, delta * 12.0)
 		update_procedural_movement(delta, false)
 		play_anim(idle_anim_name if idle_anim_name != "" else run_anim_name)
 		return
