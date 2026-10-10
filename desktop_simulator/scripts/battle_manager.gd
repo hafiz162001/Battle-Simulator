@@ -93,12 +93,37 @@ func load_custom_model_from_file(file_path: String, model_name: String) -> Strin
 		set_owner_recursive(scene, scene)
 		var packed = PackedScene.new()
 		packed.pack(scene)
+		packed.resource_path = file_path
 		var base_name = model_name.get_basename().replace(" ", "_")
 		var custom_id = "custom_" + base_name
 		loaded_models[custom_id] = packed
 		custom_models[custom_id] = "📁 " + model_name.get_basename()
 		return custom_id
 	return ""
+
+var model_rot_offset_a: float = 0.0
+var model_rot_offset_b: float = 0.0
+
+func toggle_flip_model(team_str: String) -> float:
+	var new_rot := 0.0
+	if team_str == "A":
+		model_rot_offset_a = 180.0 if model_rot_offset_a == 0.0 else 0.0
+		new_rot = model_rot_offset_a
+	else:
+		model_rot_offset_b = 180.0 if model_rot_offset_b == 0.0 else 0.0
+		new_rot = model_rot_offset_b
+		
+	if not is_running:
+		setup_battle()
+	else:
+		for u in units:
+			if is_instance_valid(u) and not u.is_dead:
+				var is_team_match = (u.team == BattleUnit.Team.A) if team_str == "A" else (u.team == BattleUnit.Team.B)
+				if is_team_match and u.model_root:
+					var m_inst = u.model_root.find_child("ModelInstance", false, false)
+					if m_inst:
+						m_inst.rotation_degrees.y += 180.0
+	return new_rot
 
 func set_army_config(p_count_a: int, p_preset_a: String, p_model_a: String, p_count_b: int, p_preset_b: String, p_model_b: String) -> void:
 	count_a = p_count_a
@@ -128,6 +153,9 @@ func setup_battle() -> void:
 	
 	var conf_a = CharacterData.get_preset(preset_a).duplicate()
 	var conf_b = CharacterData.get_preset(preset_b).duplicate()
+	
+	conf_a["model_rot_y"] = model_rot_offset_a
+	conf_b["model_rot_y"] = model_rot_offset_b
 	
 	var scene_a = loaded_models.get(model_a_id, loaded_models.get("soldier"))
 	var scene_b = loaded_models.get(model_b_id, loaded_models.get("xbot"))
@@ -175,6 +203,8 @@ func spawn_army(team: BattleUnit.Team, count: int, model_scene: PackedScene, con
 		units.append(unit)
 
 func clear_battle() -> void:
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(false)
 	for u in units:
 		if is_instance_valid(u):
 			u.queue_free()
@@ -416,6 +446,11 @@ func trigger_team_ultimate(p_team: BattleUnit.Team) -> bool:
 		if is_instance_valid(u) and not u.is_dead:
 			u.force_cast_ultimate()
 			triggered = true
+	if triggered and audio_mgr:
+		if p_team == BattleUnit.Team.A and audio_mgr.has_method("play_serangan_kubu_1"):
+			audio_mgr.play_serangan_kubu_1()
+		elif p_team == BattleUnit.Team.B and audio_mgr.has_method("play_serangan_kubu_2"):
+			audio_mgr.play_serangan_kubu_2()
 	return triggered
 
 func get_team_energy_percent(p_team: BattleUnit.Team) -> float:
@@ -439,19 +474,32 @@ func reset_super_mana(p_team: int = -1) -> void:
 	super_mana = super_mana_a
 
 func spawn_super_ult_train(p_team: int = 0) -> void:
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(true)
 	var train := SuperUltWhooshGarudaClass.new()
 	add_child(train)
 	train.launch(p_team, camera, audio_mgr, arena)
 
 func spawn_super_ult_tsunami(p_team: int = 1) -> void:
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(true)
 	var tsunami := SuperUltTsunamiSawitClass.new()
 	add_child(tsunami)
 	tsunami.launch(p_team, camera, audio_mgr, arena)
 
 func trigger_super_ultimate(p_team: int = 0) -> void:
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(true)
 	if ui and ui.has_method("play_super_ult_cutscene"):
 		ui.play_super_ult_cutscene(p_team)
 	else:
+		if audio_mgr:
+			if p_team == 1:
+				if audio_mgr.has_method("play_super_ult_b_voice"):
+					audio_mgr.play_super_ult_b_voice()
+			else:
+				if audio_mgr.has_method("play_super_ult_a_voice"):
+					audio_mgr.play_super_ult_a_voice()
 		if p_team == 1:
 			spawn_super_ult_tsunami(1)
 		else:

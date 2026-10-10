@@ -125,8 +125,12 @@ var importing_team: String = "A"
 var custom_model_modal: Control = null
 var modal_model_opt_a: OptionButton = null
 var modal_elem_opt_a: OptionButton = null
+var modal_slider_a: HSlider = null
+var modal_val_a: LineEdit = null
 var modal_model_opt_b: OptionButton = null
 var modal_elem_opt_b: OptionButton = null
+var modal_slider_b: HSlider = null
+var modal_val_b: LineEdit = null
 var modal_apply_btn: Button = null
 var modal_close_btn: Button = null
 
@@ -221,8 +225,16 @@ func connect_signals() -> void:
 	if toggle_sidebar_btn:
 		toggle_sidebar_btn.pressed.connect(_on_toggle_sidebar_pressed)
 	
-	slider_a.value_changed.connect(func(val): val_a_input.text = str(int(val)))
-	slider_b.value_changed.connect(func(val): val_b_input.text = str(int(val)))
+	slider_a.value_changed.connect(func(val):
+		val_a_input.text = str(int(val))
+		if manager and not manager.is_running:
+			_on_model_changed_live()
+	)
+	slider_b.value_changed.connect(func(val):
+		val_b_input.text = str(int(val))
+		if manager and not manager.is_running:
+			_on_model_changed_live()
+	)
 	
 	val_a_input.text_submitted.connect(func(new_text):
 		var v = clamp(int(new_text), 10, 1000)
@@ -262,6 +274,35 @@ func connect_signals() -> void:
 	load_custom_a_btn.pressed.connect(func(): open_custom_file_dialog("A"))
 	load_custom_b_btn.pressed.connect(func(): open_custom_file_dialog("B"))
 	custom_model_dialog.file_selected.connect(_on_custom_file_selected)
+	
+	# Add Quick Flip Buttons in Sidebar
+	if load_custom_a_btn and load_custom_a_btn.get_parent():
+		var sb_flip_a := Button.new()
+		sb_flip_a.text = "🔄 Balik Hadap A (180°)"
+		sb_flip_a.custom_minimum_size = Vector2(0, 28)
+		style_pixel_button(sb_flip_a, false)
+		sb_flip_a.pressed.connect(func():
+			if manager:
+				manager.toggle_flip_model("A")
+				show_toast_notification("🔄 Model Tim A dibalik 180°!")
+		)
+		var p_a = load_custom_a_btn.get_parent()
+		p_a.add_child(sb_flip_a)
+		p_a.move_child(sb_flip_a, load_custom_a_btn.get_index() + 1)
+		
+	if load_custom_b_btn and load_custom_b_btn.get_parent():
+		var sb_flip_b := Button.new()
+		sb_flip_b.text = "🔄 Balik Hadap B (180°)"
+		sb_flip_b.custom_minimum_size = Vector2(0, 28)
+		style_pixel_button(sb_flip_b, false)
+		sb_flip_b.pressed.connect(func():
+			if manager:
+				manager.toggle_flip_model("B")
+				show_toast_notification("🔄 Model Tim B dibalik 180°!")
+		)
+		var p_b = load_custom_b_btn.get_parent()
+		p_b.add_child(sb_flip_b)
+		p_b.move_child(sb_flip_b, load_custom_b_btn.get_index() + 1)
 	
 	apply_army_btn.pressed.connect(_on_apply_army_pressed)
 	
@@ -942,23 +983,11 @@ func setup_retro_pixel_gui_theme() -> void:
 			stats_lbl.add_theme_font_size_override("font_size", 11)
 		style_pixel_button(rematch_btn, true)
 		style_pixel_button(victory_close_btn, false)
-		
-		var btn_hbox = victory_modal.find_child("BtnHBox")
-		if btn_hbox and not btn_hbox.has_node("ReplayVideoBtn"):
-			var replay_btn := Button.new()
-			replay_btn.name = "ReplayVideoBtn"
-			replay_btn.text = "🎬 Video Victory"
-			replay_btn.custom_minimum_size = Vector2(125, 36)
-			replay_btn.add_theme_font_size_override("font_size", 12)
-			style_pixel_button(replay_btn, false)
-			replay_btn.pressed.connect(_on_replay_victory_video)
-			btn_hbox.add_child(replay_btn)
-			btn_hbox.move_child(replay_btn, 0)
 
 	# 7. Top Right Controls
 	if toggle_sidebar_btn:
-		style_pixel_button(toggle_sidebar_btn, false)
-		toggle_sidebar_btn.text = "🎒 Formasi Pasukan"
+		style_pixel_button(toggle_sidebar_btn, true)
+		toggle_sidebar_btn.text = "👥 Atur Pasukan [TAB]"
 	if sound_btn:
 		style_pixel_button(sound_btn, false)
 		sound_btn.text = "🔊 Suara"
@@ -1117,6 +1146,33 @@ func setup_fps_and_performance_ui() -> void:
 		custom_top_btn.pressed.connect(open_custom_model_modal)
 		top_right.add_child(custom_top_btn)
 		top_right.move_child(custom_top_btn, 0)
+		
+	# Dedicated Top Bar Army Count & Formation Toggle Button!
+	if not top_right.has_node("ToggleSidebarBtn"):
+		toggle_sidebar_btn = Button.new()
+		toggle_sidebar_btn.name = "ToggleSidebarBtn"
+		toggle_sidebar_btn.text = "👥 Atur Pasukan [TAB]"
+		toggle_sidebar_btn.custom_minimum_size = Vector2(180, 36)
+		toggle_sidebar_btn.add_theme_font_size_override("font_size", 11)
+		toggle_sidebar_btn.tooltip_text = "Atur jumlah pasukan Tim A & Tim B (10 - 1000 unit), formasi, & preset [Tekan TAB / F]"
+		style_pixel_button(toggle_sidebar_btn, true)
+		toggle_sidebar_btn.pressed.connect(_on_toggle_sidebar_pressed)
+		top_right.add_child(toggle_sidebar_btn)
+		top_right.move_child(toggle_sidebar_btn, 0)
+		
+	# Also add prominent Army Count button to BottomBar ActionGroup
+	var action_group = get_node_or_null("BottomBar/HBox/ActionGroup")
+	if action_group and not action_group.has_node("BottomArmyBtn"):
+		var b_army_btn := Button.new()
+		b_army_btn.name = "BottomArmyBtn"
+		b_army_btn.text = "👥 Atur Pasukan"
+		b_army_btn.custom_minimum_size = Vector2(140, 40)
+		b_army_btn.add_theme_font_size_override("font_size", 11)
+		b_army_btn.tooltip_text = "Atur jumlah pasukan (10 - 1000 unit) [Tekan TAB]"
+		style_pixel_button(b_army_btn, true)
+		b_army_btn.pressed.connect(_on_toggle_sidebar_pressed)
+		action_group.add_child(b_army_btn)
+		action_group.move_child(b_army_btn, 0)
 
 func update_perf_mode_btn_text(is_crowd: bool) -> void:
 	if not perf_mode_btn:
@@ -1138,6 +1194,9 @@ func play_super_ult_cutscene(team_idx: int = 0) -> void:
 	cutscene_team = team_idx
 	current_cutscene_mode = CutsceneMode.SUPER_ULT
 	is_cutscene_playing = true
+	
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(true)
 	
 	if team_idx == 1:
 		if video_top_bar:
@@ -1197,67 +1256,9 @@ func play_super_ult_cutscene(team_idx: int = 0) -> void:
 	else:
 		finish_video_cutscene()
 
-func play_victory_cutscene(winner: String, survivors: int, time_sec: float, team_idx: int = -1) -> void:
-	current_cutscene_mode = CutsceneMode.VICTORY
-	cutscene_team = team_idx
-	pending_victory_data = {
-		"winner": winner,
-		"survivors": survivors,
-		"time_sec": time_sec,
-		"team_idx": team_idx
-	}
-	is_cutscene_playing = true
-	
-	var mins = int(time_sec / 60.0)
-	var secs = int(time_sec) % 60
-	
-	var accent_color := Color(1.0, 0.85, 0.25) # Gold
-	var btn_bg_color := Color(0.75, 0.52, 0.1, 0.95)
-	if team_idx == 1:
-		accent_color = Color(0.25, 0.85, 1.0) # Cyan/Blue for Kubu B
-		btn_bg_color = Color(0.12, 0.45, 0.85, 0.95)
-	elif team_idx == 0:
-		accent_color = Color(1.0, 0.82, 0.2) # Gold/Amber for Kubu A
-		btn_bg_color = Color(0.75, 0.52, 0.1, 0.95)
-		
-	if video_top_bar:
-		var top_style = video_top_bar.get_theme_stylebox("panel")
-		if top_style is StyleBoxFlat:
-			top_style.border_color = accent_color
-			
-	if video_title_lbl:
-		video_title_lbl.text = "🏆 KEMENANGAN MUTLAK UNTUK " + winner.to_upper() + "! 🏆"
-		video_title_lbl.add_theme_color_override("font_color", accent_color)
-		
-	if video_sub_lbl:
-		video_sub_lbl.text = "👑 SISA PASUKAN: %d HERO BERTAHAN | DURASI PERTEMPURAN: %02d:%02d 👑" % [survivors, mins, secs]
-		video_sub_lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.92))
-		
-	if video_skip_btn:
-		video_skip_btn.text = "⏩ LIHAT STATISTIK HASIL PERANG [ESC / SPASI]"
-		var skip_style = video_skip_btn.get_theme_stylebox("normal")
-		if skip_style is StyleBoxFlat:
-			skip_style.bg_color = btn_bg_color
-			skip_style.border_color = accent_color
-			
-	if video_modal:
-		video_modal.visible = true
-		
-	if video_aspect_box:
-		video_aspect_box.ratio = 1.0
-		
-	var stream: VideoStream = null
-	if team_idx == 0:
-		stream = get_video_stream("res://videos/victory_kubu1.ogv")
-	if not stream:
-		stream = get_video_stream("res://videos/victory.ogv")
-		
-	if video_player and stream:
-		video_player.stream = stream
-		video_player.stop()
-		video_player.play()
-	else:
-		finish_video_cutscene()
+func play_victory_cutscene(winner: String, survivors: int, time_sec: float, _team_idx: int = -1) -> void:
+	# Animasi video kemenangan dihapus sesuai instruksi
+	_display_victory_modal(winner, survivors, time_sec)
 
 func finish_video_cutscene() -> void:
 	if not is_cutscene_playing:
@@ -1274,17 +1275,27 @@ func finish_video_cutscene() -> void:
 	current_cutscene_mode = CutsceneMode.NONE
 	
 	if mode == CutsceneMode.SUPER_ULT:
+		var spawned := false
 		if cutscene_team == 1:
 			if manager and manager.has_method("spawn_super_ult_tsunami"):
 				manager.spawn_super_ult_tsunami(1)
+				spawned = true
 		else:
 			if manager and manager.has_method("spawn_super_ult_train"):
 				manager.spawn_super_ult_train(0)
+				spawned = true
+		if not spawned and audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+			audio_mgr.set_super_ult_active(false)
 	elif mode == CutsceneMode.VICTORY:
+		if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+			audio_mgr.set_super_ult_active(false)
 		var win_name = pending_victory_data.get("winner", "KUBU")
 		var surv = pending_victory_data.get("survivors", 0)
 		var t_sec = pending_victory_data.get("time_sec", 0.0)
 		_display_victory_modal(win_name, surv, t_sec)
+	else:
+		if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+			audio_mgr.set_super_ult_active(false)
 
 func setup_custom_model_modal() -> void:
 	custom_model_modal = Control.new()
@@ -1393,6 +1404,54 @@ func setup_custom_model_modal() -> void:
 	modal_elem_opt_a.custom_minimum_size = Vector2(0, 34)
 	style_pixel_button(modal_elem_opt_a, false)
 	col_a.add_child(modal_elem_opt_a)
+	
+	col_a.add_child(make_modal_field_label("Jumlah Pasukan Tim A:"))
+	var count_box_a := HBoxContainer.new()
+	count_box_a.add_theme_constant_override("separation", 8)
+	
+	modal_slider_a = HSlider.new()
+	modal_slider_a.min_value = 10.0
+	modal_slider_a.max_value = 1000.0
+	modal_slider_a.step = 10.0
+	modal_slider_a.value = 60.0
+	modal_slider_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	modal_slider_a.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	style_pixel_slider(modal_slider_a)
+	count_box_a.add_child(modal_slider_a)
+	
+	modal_val_a = LineEdit.new()
+	modal_val_a.custom_minimum_size = Vector2(60, 28)
+	modal_val_a.text = "60"
+	modal_val_a.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	modal_slider_a.value_changed.connect(func(v): modal_val_a.text = str(int(v)))
+	modal_val_a.text_submitted.connect(func(t): modal_slider_a.value = clamp(int(t), 10, 1000))
+	count_box_a.add_child(modal_val_a)
+	col_a.add_child(count_box_a)
+	
+	var quick_a := HBoxContainer.new()
+	quick_a.add_theme_constant_override("separation", 4)
+	for qval in [60, 150, 300, 500, 1000]:
+		var qbtn := Button.new()
+		qbtn.text = str(qval)
+		qbtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		qbtn.custom_minimum_size = Vector2(0, 24)
+		qbtn.add_theme_font_size_override("font_size", 9)
+		style_pixel_button(qbtn, false)
+		var v_copy = qval
+		qbtn.pressed.connect(func(): modal_slider_a.value = v_copy)
+		quick_a.add_child(qbtn)
+	col_a.add_child(quick_a)
+	
+	var modal_flip_a := Button.new()
+	modal_flip_a.text = "🔄 Balik Hadap Pasukan A (180°)"
+	modal_flip_a.custom_minimum_size = Vector2(0, 30)
+	style_pixel_button(modal_flip_a, false)
+	modal_flip_a.pressed.connect(func():
+		if manager:
+			manager.toggle_flip_model("A")
+			show_toast_notification("🔄 Model Tim A berhasil dibalik 180°!")
+	)
+	col_a.add_child(modal_flip_a)
 	cols.add_child(col_a)
 	
 	# Column Team B
@@ -1417,6 +1476,54 @@ func setup_custom_model_modal() -> void:
 	modal_elem_opt_b.custom_minimum_size = Vector2(0, 34)
 	style_pixel_button(modal_elem_opt_b, false)
 	col_b.add_child(modal_elem_opt_b)
+	
+	col_b.add_child(make_modal_field_label("Jumlah Pasukan Tim B:"))
+	var count_box_b := HBoxContainer.new()
+	count_box_b.add_theme_constant_override("separation", 8)
+	
+	modal_slider_b = HSlider.new()
+	modal_slider_b.min_value = 10.0
+	modal_slider_b.max_value = 1000.0
+	modal_slider_b.step = 10.0
+	modal_slider_b.value = 60.0
+	modal_slider_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	modal_slider_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	style_pixel_slider(modal_slider_b)
+	count_box_b.add_child(modal_slider_b)
+	
+	modal_val_b = LineEdit.new()
+	modal_val_b.custom_minimum_size = Vector2(60, 28)
+	modal_val_b.text = "60"
+	modal_val_b.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	modal_slider_b.value_changed.connect(func(v): modal_val_b.text = str(int(v)))
+	modal_val_b.text_submitted.connect(func(t): modal_slider_b.value = clamp(int(t), 10, 1000))
+	count_box_b.add_child(modal_val_b)
+	col_b.add_child(count_box_b)
+	
+	var quick_b := HBoxContainer.new()
+	quick_b.add_theme_constant_override("separation", 4)
+	for qval in [60, 150, 300, 500, 1000]:
+		var qbtn := Button.new()
+		qbtn.text = str(qval)
+		qbtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		qbtn.custom_minimum_size = Vector2(0, 24)
+		qbtn.add_theme_font_size_override("font_size", 9)
+		style_pixel_button(qbtn, false)
+		var v_copy = qval
+		qbtn.pressed.connect(func(): modal_slider_b.value = v_copy)
+		quick_b.add_child(qbtn)
+	col_b.add_child(quick_b)
+	
+	var modal_flip_b := Button.new()
+	modal_flip_b.text = "🔄 Balik Hadap Pasukan B (180°)"
+	modal_flip_b.custom_minimum_size = Vector2(0, 30)
+	style_pixel_button(modal_flip_b, false)
+	modal_flip_b.pressed.connect(func():
+		if manager:
+			manager.toggle_flip_model("B")
+			show_toast_notification("🔄 Model Tim B berhasil dibalik 180°!")
+	)
+	col_b.add_child(modal_flip_b)
 	cols.add_child(col_b)
 	
 	vbox.add_child(cols)
@@ -1456,6 +1563,14 @@ func open_custom_model_modal() -> void:
 	if not custom_model_modal:
 		return
 	sync_modal_dropdowns()
+	if modal_slider_a and slider_a:
+		modal_slider_a.value = slider_a.value
+		if modal_val_a:
+			modal_val_a.text = str(int(slider_a.value))
+	if modal_slider_b and slider_b:
+		modal_slider_b.value = slider_b.value
+		if modal_val_b:
+			modal_val_b.text = str(int(slider_b.value))
 	custom_model_modal.visible = true
 
 func sync_modal_dropdowns() -> void:
@@ -1485,6 +1600,10 @@ func sync_modal_dropdowns() -> void:
 		modal_elem_opt_b.select(option_b.selected)
 
 func _on_modal_apply_pressed() -> void:
+	if modal_slider_a and slider_a:
+		set_slider_a(int(modal_slider_a.value))
+	if modal_slider_b and slider_b:
+		set_slider_b(int(modal_slider_b.value))
 	if modal_model_opt_a and modal_model_opt_a.selected >= 0:
 		model_option_a.select(modal_model_opt_a.selected)
 	if modal_elem_opt_a and modal_elem_opt_a.selected >= 0:
@@ -1495,7 +1614,7 @@ func _on_modal_apply_pressed() -> void:
 		option_b.select(modal_elem_opt_b.selected)
 		
 	_on_apply_army_pressed()
-	show_toast_notification("⚔️ Model & Elemen Pasukan Berhasil Diterapkan ke Medan Perang!")
+	show_toast_notification("⚔️ Jumlah Pasukan (%d vs %d), Model, & Elemen Berhasil Diterapkan!" % [int(slider_a.value), int(slider_b.value)])
 	if custom_model_modal:
 		custom_model_modal.visible = false
 
@@ -1503,6 +1622,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if is_cutscene_playing and (event.keycode == KEY_ESCAPE or event.keycode == KEY_SPACE):
 			finish_video_cutscene()
+		elif event.keycode == KEY_TAB or event.keycode == KEY_F:
+			_on_toggle_sidebar_pressed()
+			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_H:
 			visible = not visible
 		elif event.keycode == KEY_1 or event.keycode == KEY_KP_1:
@@ -1846,10 +1968,14 @@ func _on_preset_b_selected(idx: int) -> void:
 func set_slider_a(val: int) -> void:
 	slider_a.value = val
 	val_a_input.text = str(val)
+	if manager and not manager.is_running:
+		_on_model_changed_live()
 
 func set_slider_b(val: int) -> void:
 	slider_b.value = val
 	val_b_input.text = str(val)
+	if manager and not manager.is_running:
+		_on_model_changed_live()
 
 func _on_sound_pressed() -> void:
 	if audio_mgr:
@@ -1857,8 +1983,12 @@ func _on_sound_pressed() -> void:
 		sound_btn.text = "🔊 Suara" if enabled else "🔇 Mute"
 
 func _on_toggle_sidebar_pressed() -> void:
+	if not sidebar:
+		return
 	sidebar.visible = not sidebar.visible
-	toggle_sidebar_btn.text = "✖ Tutup Formasi" if sidebar.visible else "⚙️ Formasi Pasukan"
+	sidebar.z_index = 60
+	if toggle_sidebar_btn:
+		toggle_sidebar_btn.text = "✖ Tutup Pasukan [TAB]" if sidebar.visible else "👥 Atur Pasukan [TAB]"
 
 func _on_apply_army_pressed() -> void:
 	var key_a = preset_keys[option_a.selected]
@@ -1876,7 +2006,9 @@ func _on_apply_army_pressed() -> void:
 		
 	# Smoothly auto-collapse sidebar to maximize battlefield visibility
 	sidebar.visible = false
-	toggle_sidebar_btn.text = "⚙️ Formasi Pasukan"
+	if toggle_sidebar_btn:
+		toggle_sidebar_btn.text = "👥 Atur Pasukan [TAB]"
+	show_toast_notification("✅ Jumlah Pasukan Berhasil Diterapkan: %d vs %d!" % [count_a, count_b])
 
 func apply_preset_matchup(p_a: String, m_a: String, c_a: int, p_b: String, m_b: String, c_b: int) -> void:
 	var idx_a = preset_keys.find(p_a)
@@ -2002,13 +2134,8 @@ func show_victory(winner: String, survivors: int, time_sec: float, team_idx: int
 		"time_sec": time_sec,
 		"team_idx": team_idx
 	}
-	
-	# If one team won (not a draw) and victory video stream is available, play victory video cutscene!
-	var stream = get_video_stream("res://videos/victory.ogv")
-	if team_idx >= 0 and stream:
-		play_victory_cutscene(winner, survivors, time_sec, team_idx)
-	else:
-		_display_victory_modal(winner, survivors, time_sec)
+	# Animasi kemenangan (video cutscene) dihapus sesuai instruksi
+	_display_victory_modal(winner, survivors, time_sec)
 
 func _display_victory_modal(winner: String, survivors: int, time_sec: float) -> void:
 	if not victory_modal:

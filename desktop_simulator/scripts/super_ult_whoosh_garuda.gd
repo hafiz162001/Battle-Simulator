@@ -49,11 +49,17 @@ func launch(p_team: int, p_camera: Camera3D, p_audio: Node, p_arena: Node3D = nu
 	if camera and camera.has_method("add_shake"):
 		camera.add_shake(1.8)
 		
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(true)
+		
 	if audio_mgr:
-		if audio_mgr.has_method("play_horn"):
-			audio_mgr.play_horn()
-		if audio_mgr.has_method("play_explosion"):
-			audio_mgr.play_explosion(true)
+		if audio_mgr.has_method("play_super_ult_a"):
+			audio_mgr.play_super_ult_a()
+		else:
+			if audio_mgr.has_method("play_horn"):
+				audio_mgr.play_horn()
+			if audio_mgr.has_method("play_explosion"):
+				audio_mgr.play_explosion(true)
 
 func build_whoosh_and_garuda() -> void:
 	body_root = Node3D.new()
@@ -666,4 +672,6 @@ func spawn_garuda_fire_embers() -> void:
 func on_charge_complete() -> void:
 	if audio_mgr and audio_mgr.has_method("play_explosion"):
 		audio_mgr.play_explosion(true)
+	if audio_mgr and audio_mgr.has_method("set_super_ult_active"):
+		audio_mgr.set_super_ult_active(false)
 	queue_free()

@@ -147,7 +147,8 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 		model_instance.name = "ModelInstance"
 		model_root.add_child(model_instance)
 		
-		normalize_model(model_instance, p_model_scene)
+		var custom_rot_y: float = preset_config.get("model_rot_y", 0.0)
+		normalize_model(model_instance, p_model_scene, custom_rot_y)
 		find_and_setup_animations_and_skeleton(model_instance)
 		
 	# Attach weapon to model_root so it animates, strikes, and falls WITH the body!
@@ -157,11 +158,26 @@ func setup(p_team: Team, p_model_scene: PackedScene, preset_config: Dictionary, 
 
 func detect_model_natural_forward_z(model_inst: Node3D, model_scene: PackedScene = null) -> float:
 	if not model_inst:
+		return 1.0
+		
+	var path_lower := ""
+	if model_scene and model_scene.resource_path != "":
+		path_lower = model_scene.resource_path.to_lower()
+	var name_lower := model_inst.name.to_lower()
+	
+	# 1. Models known to face -Z in their raw assets (need 180 deg flip)
+	if "soldier" in path_lower or "soldier" in name_lower:
 		return -1.0
-	if model_scene and "xbot" in model_scene.resource_path.to_lower():
+	if "robotexpressive" in path_lower or "robot_expressive" in path_lower or "robotexpressive" in name_lower:
+		return -1.0
+		
+	# 2. Models known to face +Z
+	if "xbot" in path_lower or "xbot" in name_lower:
 		return 1.0
-	if "xbot" in model_inst.name.to_lower():
+	if "jokowi" in path_lower or "jokowi" in name_lower:
 		return 1.0
+		
+	# 3. If model has an active Skeleton with foot/hip bones, check toe vs hip direction
 	var skel: Skeleton3D = model_inst.find_child("Skeleton3D", true, false)
 	if skel:
 		var hips_idx := -1
@@ -179,10 +195,48 @@ func detect_model_natural_forward_z(model_inst: Node3D, model_scene: PackedScene
 				anim_p.advance(0.05)
 				var h_p = skel.get_bone_global_pose(hips_idx).origin
 				var t_p = skel.get_bone_global_pose(toe_idx).origin
-				return t_p.z - h_p.z
-	return -1.0
+				var diff_z = t_p.z - h_p.z
+				if abs(diff_z) > 0.03:
+					return diff_z
+					
+	# 4. Check mesh normal distribution (vital for static Sketchfab/Blender OBJ/GLTF models)
+	var avg_nz = calculate_mesh_average_normal_z(model_inst)
+	if abs(avg_nz) > 0.008:
+		return 1.0 if avg_nz > 0.0 else -1.0
+		
+	# 5. Standard glTF format specification: Front facing is +Z
+	return 1.0
 
-func normalize_model(model_inst: Node3D, model_scene: PackedScene = null) -> void:
+func calculate_mesh_average_normal_z(root_node: Node3D) -> float:
+	var total_nz := 0.0
+	var count := 0
+	var stack = [root_node]
+	while stack.size() > 0:
+		var curr = stack.pop_back()
+		if curr is MeshInstance3D and curr.mesh:
+			var m: Mesh = curr.mesh
+			var xform = root_node.global_transform.affine_inverse() * curr.global_transform if (curr.is_inside_tree() and root_node.is_inside_tree()) else curr.transform
+			for s in range(m.get_surface_count()):
+				var arrays = m.surface_get_arrays(s)
+				if arrays.size() > Mesh.ARRAY_NORMAL and arrays[Mesh.ARRAY_NORMAL] != null:
+					var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+					var n_count = normals.size()
+					if n_count > 0:
+						var step = max(1, int(n_count / 150))
+						var i = 0
+						while i < n_count:
+							var n_transformed = xform.basis * normals[i]
+							total_nz += n_transformed.z
+							count += 1
+							i += step
+		for ch in curr.get_children():
+			if ch is Node3D:
+				stack.push_back(ch)
+	if count > 0:
+		return total_nz / float(count)
+	return 0.0
+
+func normalize_model(model_inst: Node3D, model_scene: PackedScene = null, custom_rot_y: float = 0.0) -> void:
 	if not model_inst:
 		return
 	var aabb = calculate_combined_mesh_aabb(model_inst)
@@ -196,10 +250,10 @@ func normalize_model(model_inst: Node3D, model_scene: PackedScene = null) -> voi
 		
 	# Normalize orientation: models must face +Z (project standard forward axis)
 	var natural_fwd_z = detect_model_natural_forward_z(model_inst, model_scene)
-	if natural_fwd_z > 0.0:
-		model_inst.rotation_degrees.y = 0.0 # Already facing +Z (e.g. Xbot, Mixamo +Z models)
+	if natural_fwd_z >= 0.0:
+		model_inst.rotation_degrees.y = 0.0 + custom_rot_y # Already facing +Z (Standard glTF, Xbot, Sketchfab, custom models)
 	else:
-		model_inst.rotation_degrees.y = 180.0 # Facing -Z, rotate 180 to face +Z (e.g. Soldier, RobotExpressive)
+		model_inst.rotation_degrees.y = 180.0 + custom_rot_y # Facing -Z, rotate 180 to face +Z (Soldier, RobotExpressive)
 		
 	var current_height = aabb.size.y
 	# If height is non-standard (<1.3m or >2.8m), scale to 1.85m standard humanoid height
@@ -759,7 +813,9 @@ func update_archer_combat(delta: float, dist_xz: float, dir_to_target: Vector3, 
 					hit_dealt = true
 					energy = min(max_energy, energy + 20.0)
 					shoot_magic(target_unit.global_position + Vector3(0, 1.2 * target_unit.unit_scale, 0))
-					if audio_manager and audio_manager.has_method("play_ult_cast"):
+					if audio_manager and audio_manager.has_method("play_mage_attack"):
+						audio_manager.play_mage_attack(0 if team == Team.A else 1)
+					elif audio_manager and audio_manager.has_method("play_ult_cast"):
 						audio_manager.play_ult_cast()
 						
 				if t >= 1.0:
@@ -787,7 +843,7 @@ func update_archer_combat(delta: float, dist_xz: float, dir_to_target: Vector3, 
 					energy = min(max_energy, energy + 18.0)
 					shoot_arrow(target_unit.global_position + Vector3(0, 1.2 * target_unit.unit_scale, 0))
 					if audio_manager and audio_manager.has_method("play_bow_shoot"):
-						audio_manager.play_bow_shoot()
+						audio_manager.play_bow_shoot(0 if team == Team.A else 1)
 						
 				if t >= 1.0:
 					is_striking = false
@@ -826,7 +882,7 @@ func fire_rifle_burst_shot(shot_damage: float) -> void:
 		model_root.rotation_degrees.x = 4.0
 		
 	if audio_manager and audio_manager.has_method("play_gunshot"):
-		audio_manager.play_gunshot()
+		audio_manager.play_gunshot(0 if team == Team.A else 1)
 		
 	var muzzle_pos = global_position + Vector3(0.2, 1.1, 0.4) * unit_scale + global_transform.basis.z * 0.35
 	var target_chest = target_unit.global_position + Vector3(0, 1.15 * target_unit.unit_scale, 0)
@@ -1000,7 +1056,10 @@ func execute_melee_impact(step: int) -> void:
 		actual_damage *= 1.25
 		target_unit.take_damage(actual_damage, global_position)
 		if audio_manager:
-			audio_manager.play_explosion(true)
+			if audio_manager.has_method("play_unit_attack"):
+				audio_manager.play_unit_attack(0 if team == Team.A else 1, "titan", true)
+			else:
+				audio_manager.play_explosion(true)
 		var opp_team_int = 1 if team == Team.A else 0
 		var candidates: Array = []
 		if battle_manager and battle_manager.has_method("get_units_in_radius"):
@@ -1023,15 +1082,21 @@ func execute_melee_impact(step: int) -> void:
 			spawn_banner("🥊 K.O.!", Color(1.0, 0.2, 0.2))
 		target_unit.take_damage(actual_damage, global_position)
 		if audio_manager:
-			audio_manager.play_hit(true)
+			if audio_manager.has_method("play_unit_attack"):
+				audio_manager.play_unit_attack(0 if team == Team.A else 1, "fist", true)
+			else:
+				audio_manager.play_hit(true)
 		return
 		
 	target_unit.take_damage(actual_damage, global_position)
 	if audio_manager:
-		if weapon_type == "sword_shield" or weapon_type == "spear":
-			audio_manager.play_sword_slash()
+		if audio_manager.has_method("play_unit_attack"):
+			audio_manager.play_unit_attack(0 if team == Team.A else 1, weapon_type, is_heavy or step == 2)
 		else:
-			audio_manager.play_hit(is_heavy or step == 2)
+			if weapon_type == "sword_shield" or weapon_type == "spear":
+				audio_manager.play_sword_slash(0 if team == Team.A else 1)
+			else:
+				audio_manager.play_hit(is_heavy or step == 2, 0 if team == Team.A else 1)
 
 func ground_unit(delta: float) -> void:
 	if arena and arena.has_method("get_ground_height"):
@@ -1258,7 +1323,9 @@ func update_ultimate(delta: float) -> void:
 				get_parent().add_child(proj)
 				var shoot_origin = global_position + Vector3(0, 2.2 * unit_scale, 0)
 				proj.launch(shoot_origin, aim_target + spread, team, damage * 1.6, element)
-				if audio_manager and audio_manager.has_method("play_ult_cast"):
+				if audio_manager and audio_manager.has_method("play_mage_attack"):
+					audio_manager.play_mage_attack(0 if team == Team.A else 1)
+				elif audio_manager and audio_manager.has_method("play_ult_cast"):
 					audio_manager.play_ult_cast()
 					
 		"archer":
@@ -1276,7 +1343,7 @@ func update_ultimate(delta: float) -> void:
 				var shoot_origin = global_position + Vector3(0, 1.35 * unit_scale, 0) + global_transform.basis.z * 0.4
 				arrow.launch(shoot_origin, aim_target + spread, team, damage * 1.5)
 				if audio_manager and audio_manager.has_method("play_bow_shoot"):
-					audio_manager.play_bow_shoot()
+					audio_manager.play_bow_shoot(0 if team == Team.A else 1)
 					
 		"swordsman":
 			# 1080 degree spin + forward whirlwind dash
@@ -1300,7 +1367,7 @@ func update_ultimate(delta: float) -> void:
 				ult_hits_dealt += 1
 				damage_aoe_enemies(global_position, 4.2 * unit_scale, damage * 1.25, 7.0)
 				if audio_manager and audio_manager.has_method("play_sword_slash"):
-					audio_manager.play_sword_slash()
+					audio_manager.play_sword_slash(0 if team == Team.A else 1)
 					
 		"spearman":
 			# Dragon thrust forward lunge
